@@ -10,7 +10,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 bl_info = {
     "name": "Brawl Rendering Toolkit",
     "author": "tryptech, Wayde Brandon Moss",
-    "version": (1, 0, 6),
+    "version": (1, 0, 7),
     "blender": (2, 81, 0),
     "location": "View3D > Sidebar > Tool",
     "description": "Super Smash Bros. Brawl Rendering Tools and Shortcuts",
@@ -1448,76 +1448,6 @@ class IMAGE_OT_reload_and_render_all(bpy.types.Operator):
 #-----------------------------------------
 
 @register_wrap
-class creasePG(PropertyGroup):
-
-    @classmethod
-    def poll(cls, context):
-        current_mode = bpy.context.mode
-        if current_mode == 'EDIT_MESH':
-            return True
-        else:
-            return False
-    
-    def update_edgeCrease( self, context ):
-            ''' Update function for edgeCrease property '''
-    
-            o  = bpy.context.object
-            d  = o.data
-            bm = bmesh.from_edit_mesh( d )
-    
-            #creaseLayer = bm.edges.layers.crease['SubSurfCrease']
-            creaseLayer = bm.edges.layers.crease.verify()
-    
-            if self.whoToInfluence == 'Selected Elements':
-                selectedEdges = [ e for e in bm.edges if e.select ]
-                for e in selectedEdges: e[ creaseLayer ] = self.edgeCrease
-            else:
-                for e in bm.edges: e[ creaseLayer ] = self.edgeCrease
-    
-            bmesh.update_edit_mesh( d )
-    
-    items = [
-        ('All', 'All', ''),
-        ('Selected Elements', 'Selected Elements', '')
-    ]
-
-    whoToInfluence = bpy.props.EnumProperty( # Material distribution method
-        description = "Influence all / selection",
-        name        = "whoToInfluence",
-        items       = items,
-        default     = 'Selected Elements'
-    )
-
-    edgeCrease = bpy.props.FloatProperty(
-        description = "Edge Crease",
-        name        = "Edge Crease",
-        min         = 0.0,
-        max         = 1.0,
-        soft_min    = 0.0,
-        soft_max    = 1.0,
-        step        = 1,
-        default     = 0,
-        update      = update_edgeCrease
-    )
-    
-    def get_crease_selected():
-        o  = bpy.context.object
-        d  = o.data
-        bm = bmesh.from_edit_mesh( d )
-    
-        creaseLayer = bm.edges.layers.crease.verify()
-    
-        selectedEdges = ""
-        for e in bm.edges:
-            if e.select:
-                selectedEdges += (str(round(e[ creaseLayer ], 2)) + ' ')
-        return selectedEdges
-
-    
-
-#-----------------------------------------
-
-@register_wrap
 class POSE_ARMATURE_PT_brt_panel(bpy.types.Panel):
     bl_idname = "POSE_ARMATURE_PT_brt_panel"
     bl_label = "Brawl Rendering Toolkit"
@@ -1595,15 +1525,14 @@ class POLISH_PT_panel(bpy.types.Panel):
         scene = bpy.context.scene
         props = context.scene.creasePG
         
-        row = layout.row(align=True)
-        op = row.operator(DATA_OT_brt_toggle_simplify.bl_idname,text='Toggle Simplify',icon='MOD_SIMPLIFY')
-        layout.row().separator()
-        layout.row().separator()
-        box = layout.box()
-        box.label(text='Edge Operations:')
+        column = layout.column(align=False)
+        op = column.operator(DATA_OT_brt_toggle_simplify.bl_idname,text='Toggle Simplify',icon='MOD_SIMPLIFY')
+        column.separator()
+        column.label(text='Edge Operations')
+        box = column.box()
         col = box.column(align=True)
-        col.prop(props, "edgeCrease")
-        row = col.row(align=True,heading="Crease")
+        col.label(text='Crease')
+        row = col.row(align=True)
         op = row.operator(MESH_OT_brt_crease.bl_idname,text='0.0')
         op.crease_value = 0.0
         op = row.operator(MESH_OT_brt_crease.bl_idname,text='0.3')
@@ -1614,8 +1543,9 @@ class POLISH_PT_panel(bpy.types.Panel):
         op.crease_value = 0.7
         op = row.operator(MESH_OT_brt_crease.bl_idname,text='1.0')
         op.crease_value = 1.0
-        box.label(text='Sharp:')
-        row = box.row(align=True)
+        col.separator()
+        col.label(text='Sharp')
+        row =col.row(align=True)
         op = row.operator(MESH_OT_brt_sharp.bl_idname,text='Mark')
         op.clear_sharp = False
         op = row.operator(MESH_OT_brt_sharp.bl_idname,text='Remove')
@@ -1636,8 +1566,10 @@ class POSING_PT_panel(bpy.types.Panel):
         scene = bpy.context.scene
         
         column = layout.column(align=True)
-        op = column.operator(OBJECT_OT_brt_toggle_proxy.bl_idname,text='Toggle Proxy')
-        op = column.operator(POSE_ARMATURE_OT_clear_to_bind.bl_idname,text='Reset Proxy')
+        column.label(text='Proxy')
+        row = column.row(align=True)
+        op = row.operator(OBJECT_OT_brt_toggle_proxy.bl_idname,text='Toggle')
+        op = row.operator(POSE_ARMATURE_OT_clear_to_bind.bl_idname,text='Reset')
         op.clear_location=True
         op.clear_rotation=True
         op.clear_scale=True
@@ -1682,8 +1614,6 @@ def register():
     from bpy.utils import register_class
     for cls in __bl_classes:
         register_class(cls)
-            
-    bpy.types.Scene.creasePG = bpy.props.PointerProperty( type = creasePG )
 
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
     
