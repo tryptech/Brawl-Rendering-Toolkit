@@ -10,7 +10,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 bl_info = {
     "name": "Brawl Rendering Toolkit",
     "author": "tryptech, Wayde Brandon Moss",
-    "version": (1, 0, 7),
+    "version": (1, 1, 0),
     "blender": (2, 81, 0),
     "location": "View3D > Sidebar > Tool",
     "description": "Super Smash Bros. Brawl Rendering Tools and Shortcuts",
@@ -48,7 +48,6 @@ Current workflow:
                     edit mode-> rotate joints so their axes match those in BC
 
     Animations:
-
         Importing to Blender from BrawlCrate
             BC:
                 Export as .anim
@@ -658,9 +657,9 @@ def action_from_maya_anim_format(context, anim_name, anim_file_lines,from_maya):
             key_frame.handle_left_type = handle_left[0]
             key_frame.handle_right_type = handle_right[0]
             
-            if handle_left[0] is not 'AUTO':
+            if handle_left[0] != 'AUTO':
                 key_frame.handle_left = (key[0] + handle_left_offset[0], key[1] + handle_left_offset[1])
-            if handle_right[0] is not 'AUTO':
+            if handle_right[0] != 'AUTO':
                 key_frame.handle_right = (key[0] + handle_right_offset[0], key[1] + handle_right_offset[1])
 
                 
@@ -684,15 +683,26 @@ def action_from_maya_anim_format(context, anim_name, anim_file_lines,from_maya):
     return action
 
 def check_collections(search_name):
-    found = None
+    found = False
     for collection in bpy.data.collections:
         if collection.name == search_name:
-            found == collection
-
+            found = True
     return found
 
+def obj_in_collection(obj, col):
+    in_collection = False
+    for collection in obj.users_collection:
+        if collection.name == col:
+            in_collection = True
+    return in_collection
+
+def unlink_obj_from_collections(obj):
+    for collection in obj.users_collection:
+        collection.objects.unlink(obj)
+    return obj
+
 def check_controls():
-    if check_collections('Controls'):
+    if not check_collections('Controls'):
         collection = bpy.data.collections.new('Controls')
         bpy.context.scene.collection.children.link(collection)
 
@@ -798,6 +808,7 @@ def create_identityRigBC(context):
     bpy.ops.object.mode_set(mode='OBJECT')
     dummy_armature = bpy.data.armatures.new(name='Proxy_' +active_object.data.name)
     dummy_object = bpy.data.objects.new(name='Proxy_' + active_object.name,object_data = dummy_armature)
+    dummy_object["BRT"] = "PROXY"
     context.scene.proxy = 'Proxy_' + active_object.name
     #context.scene.objects.link(dummy_object)
     context.view_layer.active_layer_collection.collection.objects.link(dummy_object)
@@ -863,6 +874,14 @@ def create_identityRigBC(context):
         con.use_y = True
         con.use_z = True
 
+        con_drv = con.driver_add('enabled').driver
+        con_drv.type = 'SCRIPTED'
+        var = con_drv.variables.new()
+        var.name = 'loc'
+        var.targets[0].id = bpy.data.objects['Con.Proxy']
+        var.targets[0].data_path='location.x'
+        con_drv.expression = ' loc < 0'
+
         con  =active_pose_bone.constraints.new('COPY_ROTATION')
         con.influence=1
         con.mute=False
@@ -874,6 +893,14 @@ def create_identityRigBC(context):
         con.use_x = True
         con.use_y = True
         con.use_z = True
+
+        con_drv = con.driver_add('enabled').driver
+        con_drv.type = 'SCRIPTED'
+        var = con_drv.variables.new()
+        var.name = 'loc'
+        var.targets[0].id = bpy.data.objects['Con.Proxy']
+        var.targets[0].data_path='location.x'
+        con_drv.expression = ' loc < 0'
 
         #the constrained armature's world pose bones do not have the bind scale
         #Using an offset=bindscale with a copyscale is insufficient since .. for w/e reason, Blender combines the scales as a sum, instead of the expected multiplication 
@@ -917,7 +944,14 @@ def create_identityRigBC(context):
         con.to_max_x_scale = 1
         con.to_max_y_scale = 1
         con.to_max_z_scale = 1
-    
+
+        con_drv = con.driver_add('enabled').driver
+        con_drv.type = 'SCRIPTED'
+        var = con_drv.variables.new()
+        var.name = 'loc'
+        var.targets[0].id = bpy.data.objects['Con.Proxy']
+        var.targets[0].data_path='location.x'
+        con_drv.expression = ' loc < 0'
 
     context.view_layer.objects.active  = dummy_object
     dummy_object['brawl_root'] = active_object['brawl_root']
@@ -926,8 +960,8 @@ def create_identityRigBC(context):
     active_object.parent = dummy_object
     active_object.parent_type = 'OBJECT'
     active_object.matrix_local = Matrix.Identity(4)
-    active_object.hide_select=True
-    active_object.hide_viewport=True
+    #active_object.hide_select=True
+    #active_object.hide_viewport=True
     active_object.select_set(False)
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
@@ -954,38 +988,150 @@ def brawlcrate_anim_import(context, filepath,from_maya):
     return action
 
 def set_obj_mods(obj, context):
+    mesh = obj.data
+    if obj.type == 'MESH':
+        mesh.use_auto_smooth = False
     context.view_layer.objects.active = obj
     context.view_layer.objects.active.modifiers.clear()
-    arm1 = context.view_layer.objects.active.modifiers.new('Main Armature','ARMATURE')
-    arm1.object = bpy.data.objects[context.scene.armature]
 
-    for prop in {'show_render', 'show_viewport'}:
-        arm1_drv = arm1.driver_add(prop).driver
-        arm1_drv.type = 'SCRIPTED'
-        var = arm1_drv.variables.new()
-        var.name = 'loc'
-        var.targets[0].id = bpy.data.objects['Con.Proxy']
-        var.targets[0].data_path='location.x'
-        arm1_drv.expression = ' loc >= 0'
-
-    arm2 = context.view_layer.objects.active.modifiers.new('Proxy Armature','ARMATURE')
-    arm2.object = bpy.data.objects[context.scene.proxy].children[0]
-    for prop in {'show_render', 'show_viewport'}:
-        arm2_drv = arm2.driver_add(prop).driver
-        arm2_drv.type = 'SCRIPTED'
-        var = arm2_drv.variables.new()
-        var.name = 'loc'
-        var.targets[0].id = bpy.data.objects['Con.Proxy']
-        var.targets[0].data_path='location.x'
-        arm2_drv.expression = ' loc < 0'
-        
     subd = context.view_layer.objects.active.modifiers.new('Subdivision Subsurface', 'SUBSURF')
-    subd.render_levels = 1
-    cosm = context.view_layer.objects.active.modifiers.new('Smooth Corrective', 'CORRECTIVE_SMOOTH')
-    cosm.factor = 1.0
-    cosm.rest_source = 'BIND'
-    cosm.smooth_type = 'LENGTH_WEIGHTED'
-    cosm.use_pin_boundary = True
+    subd.render_levels = 2
+
+    arm1 = context.view_layer.objects.active.modifiers.new('Proxy Armature','ARMATURE')
+    arm1.object = context.scene.objects.get("DAE_Armature")
+
+def initRig(context):
+    bind_list = [
+        ['CFG.Hip','HipN'],
+        ['CFG.Waist','BodyN'],
+        ['CFG.Bust','BustN'],
+        ['CFG.Neck','NeckN'],
+        ['CFG.Head','HeadN'],
+        ['CFG.Leg.Start.L','LLegJ'],
+        ['CFG.Knee.L','LKneeJ'],
+        ['CFG.Ankle.L','LFootJ'],
+        ['CFG.Toe.L','LToeN'],
+        ['CFG.Shoulder.Start.L','LShoulderN'],
+        ['CFG.Shoulder.L','LShoulderJ'],
+        ['CFG.Elbow.L','LArmJ'],
+        ['CFG.Hand.L','LHandN'],
+        ['CFG.Thumb.1.L','LThumbNa'],
+        ['CFG.Thumb.2.L','LThumbNb'],
+        ['CFG.FingerIndex.1.L','L1stNa'],
+        ['CFG.FingerIndex.2.L','L1stNb'],
+        ['CFG.FingerMiddle.1.L','L2ndNa'],
+        ['CFG.FingerMiddle.2.L','L2ndNb'],
+        ['CFG.FingerRing.1.L','L3rdNa'],
+        ['CFG.FingerRing.2.L','L3rdNb'],
+        ['CFG.FingerPinky.1.L','L4thNa'],
+        ['CFG.FingerPinky.2.L','L4thNb']
+    ]
+
+    scene = context.scene
+    cspur = None
+    target = None
+    objects = [obj for obj in context.scene.objects if "BRT" in obj]
+    for obj in objects :
+        if obj["BRT"] == "CSPUR":
+            cspur = obj
+        if obj["BRT"] == "TARGET":
+            target = obj
+
+    cursor_mat_original = scene.cursor.matrix
+    context.view_layer.objects.active = cspur
+    if context.mode != 'POSE':
+        bpy.ops.object.mode_set(mode='POSE', toggle=False)
+    
+    tog_bone = cspur.pose.bones.get('CFG.Toggle')
+    tog_bone.rotation_mode = 'XYZ'
+    tog_bone.rotation_euler = [0, radians(-45), 0]
+
+    for bone_pair in bind_list:
+        bpy.ops.pose.select_all(action='DESELECT')
+        csp_bone = cspur.pose.bones.get(bone_pair[0])
+        target_bone = target.pose.bones.get(bone_pair[1])
+        csp_bone.bone.select = True
+        context.object.data.bones.active = csp_bone.bone
+        scene.cursor.location = (target.matrix_world @ target_bone.matrix).to_translation() 
+        mat_world = context.object.convert_space(pose_bone=csp_bone, matrix=csp_bone.matrix, from_space='POSE', to_space='WORLD')
+        mat_world.translation = scene.cursor.location
+        csp_bone.matrix = context.object.convert_space(pose_bone=csp_bone, matrix=mat_world, from_space='WORLD', to_space='POSE')
+    scene.cursor.matrix = cursor_mat_original
+    bpy.ops.pose.select_all(action='DESELECT')
+    cspur.data.layers[0] = True
+
+def bindToIK(context):
+    scene = context.scene
+    cspur = None
+    target = None
+    proxy = None
+    objects = [obj for obj in context.scene.objects if "BRT" in obj]
+    for obj in objects :
+        if obj["BRT"] == "CSPUR":
+            cspur = obj
+        if obj["BRT"] == "TARGET":
+            target = obj
+        if obj["BRT"] == "PROXY":
+            proxy = obj
+    tog_bone = cspur.pose.bones.get('CFG.Toggle')
+    matched_bone = False
+
+    bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
+    bpy.ops.object.select_all(action='DESELECT')
+    cspur.select_set(True)
+    context.view_layer.objects.active = cspur
+
+    bpy.ops.object.mode_set(mode='POSE', toggle=False)
+    bpy.ops.pose.select_all(action='DESELECT')
+    cspur.data.layers[2] = True
+    for i in range(32):
+        if i != 2:
+            cspur.data.layers[i] = False
+    for bone in cspur.pose.bones:
+        if bone.bone.layers[2] == True:
+            bone.bone.select = True
+    bpy.ops.pose.armature_apply(selected=True)
+    bpy.ops.pose.select_all(action='DESELECT')
+    tog_bone.bone.select = True
+    bpy.ops.pose.rot_clear()
+    bpy.ops.pose.select_all(action='DESELECT')
+    bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
+    
+    bpy.ops.object.select_all(action='DESELECT')
+    target.select_set(state=True)
+    context.view_layer.objects.active = target
+    bpy.ops.object.mode_set(mode='POSE', toggle=False)
+    bpy.ops.pose.select_all(action='SELECT')
+    for bone in target.pose.bones:
+        context.object.data.bones.active = bone.bone
+        for cspb in cspur.pose.bones:
+            if cspb.name == bone.name:
+                matched_bone = True
+                for constraint in {'COPY_LOCATION', 'COPY_ROTATION', 'COPY_SCALE'}:
+                    c = bone.constraints.new(constraint)
+                    c.target = cspur
+                    c.subtarget = cspb.name
+                    if constraint == 'COPY_SCALE':
+                        c.use_offset = True
+                    d = c.driver_add('enabled').driver
+                    d.type = 'SCRIPTED'
+                    var = d.variables.new()
+                    var.name = 'loc'
+                    var.targets[0].id = bpy.data.objects['Con.Proxy']
+                    var.targets[0].data_path='location.x'
+                    d.expression = ' loc >= 0'
+    for i in range(32):
+        if any(i == layer for layer in {8, 9, 10, 11, 12, 13, 14}):
+            cspur.data.layers[i] = True
+        else:
+            cspur.data.layers[i] = False
+    cspur.data.layers[2] = False
+    if context.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
+    target.hide_select=True
+    target.hide_viewport=True
+    proxy.hide_viewport=True
+    return matched_bone
 
 def matrix_from_sequence(sequence):
     return Matrix((sequence[0:4],sequence[4:8],sequence[8:12],sequence[12:16]))
@@ -1003,68 +1149,6 @@ def update_images():
         img.reload()
 
 #-----------------------------------------
-
-@register_wrap
-class OBJECT_OT_brawlcrate_fbx_import(Operator, ImportHelper):
-
-    bl_idname = "brawlcrate.fbx_import"
-    bl_label = "BrawlCrate FBX Import"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    filename_ext = '.fbx'
-
-    filter_glob : StringProperty(
-        default='*.fbx',
-        options={'HIDDEN'},
-        maxlen=255,
-    )
-
-    @classmethod
-    def poll(cls, context):
-        return True
-    
-    def execute(self, context): 
-        filepath = self.filepath
-
-        bpy.ops.import_scene.fbx(filepath=filepath, global_scale=1.0, use_custom_normals=True, use_image_search=True, use_anim=False, use_custom_props=True, use_custom_props_enum_as_string=True, automatic_bone_orientation=True, primary_bone_axis='Y', secondary_bone_axis='X', use_prepost_rot=True)
-        
-        bpy.ops.object.scale_clear()
-
-        if check_collections('Model') is None:
-            collection = bpy.data.collections.new('Model')
-            bpy.context.scene.collection.children.link(collection)
-
-        for obj in context.selected_objects:
-            bpy.data.collections['Model'].objects.link(obj)            
-
-        #the importer selects all imported objects
-        #need to select the armature for the bind_pose_import()
-        #todo:bug: if there are multiple armatures in the .dae, then the wrong armature may be chosen. (Lucariosk)
-        root_object = [obj for obj in context.selected_objects if obj.parent is None and isinstance(obj.data,bpy.types.Armature)]
-        #todo: whats the point of len(root_object) > 0? typo? should be 1?
-        if len(root_object) > 0:
-            root_object = root_object[0]
-        #context.scene.objects.active = root_object
-        #print('model imported')
-        #print()
-        root_object.name = "Main_Armature"
-
-        context.scene.armature = root_object.name
-
-        check_controls()
-        for obj in bpy.context.selected_objects:
-            obj.select_set(False)
-        root_object.select_set(True)
-        context.view_layer.objects.active = root_object
-        bpy.context.active_object.parent = bpy.data.objects['Con.Scale']
-
-        for area in bpy.context.screen.areas:
-            if area.type == 'VIEW_3D':
-                for region in area.regions:
-                    if region.type == 'WINDOW':
-                        override = {'area': area, 'region': region, 'edit_object': bpy.context.edit_object}
-                        bpy.ops.view3d.view_selected(override)
-        return {'FINISHED'}
 
 @register_wrap
 class OBJECT_OT_brawlcrate_collada_import(Operator, ImportHelper):
@@ -1119,12 +1203,28 @@ class OBJECT_OT_brawlcrate_collada_import(Operator, ImportHelper):
             if len(root_object) > 0:
                 root_object = root_object[0]
 
-            if check_collections('Proxy') is None:
+            if not check_collections('Proxy'):
                 collection = bpy.data.collections.new('Proxy')
                 bpy.context.scene.collection.children.link(collection)
 
+            if not check_collections('Model'):
+                collection = bpy.data.collections.new('Model')
+                bpy.context.scene.collection.children.link(collection)
+
+            collections = bpy.context.view_layer.layer_collection.children
+
+            for collection in collections:
+                if collection.name == 'Proxy':
+                    bpy.context.view_layer.active_layer_collection = collection
+
             for obj in context.selected_objects:
-                bpy.data.collections['Proxy'].objects.link(obj)      
+                if obj.type == 'ARMATURE':
+                    if not obj_in_collection(obj, 'Proxy'):
+                        bpy.data.collections['Proxy'].objects.link(obj)
+                else:
+                    if not obj_in_collection(obj, 'Model'):
+                        bpy.data.collections['Model'].objects.link(obj)
+
             
             root_object.select_set(True)
             #set as active object so that mode_set works as intended
@@ -1133,6 +1233,7 @@ class OBJECT_OT_brawlcrate_collada_import(Operator, ImportHelper):
             #print('model imported')
             #print()
             root_object.name = "DAE_Armature"
+            root_object["BRT"] = "TARGET"
 
         if 'BIND_POSE' in import_items:
 
@@ -1155,15 +1256,15 @@ class OBJECT_OT_brawlcrate_collada_import(Operator, ImportHelper):
             #user:readme: this is the rig to import to, export from, animate with
             create_identityRigBC(context)
 
-            if check_collections('Proxy') is None:
+            if not check_collections('Proxy'):
                 collection = bpy.data.collections.new('Proxy')
                 bpy.context.scene.collection.children.link(collection)
 
             for obj in context.selected_objects:
-                bpy.data.collections['Proxy'].objects.link(obj)   
+                if not obj_in_collection(obj, 'Proxy'):
+                    bpy.data.collections['Proxy'].objects.link(obj)
         
         bpy.context.active_object.parent = bpy.data.objects['Con.Scale']
-        #bpy.ops.object.parent_set()
 
         for area in bpy.context.screen.areas:
             if area.type == 'VIEW_3D':
@@ -1218,12 +1319,12 @@ class POSE_OT_brawlcrate_anim_import(Operator, ImportHelper):
 @register_wrap
 class DATA_OT_brt_init_polish_setup(bpy.types.Operator):
     bl_idname = "brt.setup"
-    bl_label = "Setup FBX and DAE for polish"
+    bl_label = "Setup DAE for polish"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):    
-        return (context.scene.proxy != '') and (context.scene.armature != '')
+        return (context.scene.proxy != '')
 
     def execute(self, context):
         #replace with check_controls
@@ -1237,9 +1338,11 @@ class DATA_OT_brt_init_polish_setup(bpy.types.Operator):
             obj.select_set(False)
         context.view_layer.objects.active = bpy.data.objects[context.scene.proxy].children[0]
         bpy.ops.object.select_hierarchy(direction='CHILD',extend=False)
-        bpy.ops.object.delete(confirm=False)
 
-        for obj in bpy.data.objects[context.scene.armature].children:
+        for obj in context.scene.objects.get("DAE_Armature").children:
+            unlink_obj_from_collections(obj)
+            if not obj_in_collection(obj, 'Model'):
+                bpy.data.collections['Model'].objects.link(obj)
             set_obj_mods(obj, context)
 
         self.report({'INFO'}, "Initial polish done")
@@ -1266,23 +1369,6 @@ class OBJECT_OT_brt_set_object_mods(bpy.types.Operator):
     def execute(self, context):
         for obj in context.selected_objects:
             set_obj_mods(obj, context)
-        return {'FINISHED'}
-
-@register_wrap
-class DATA_OT_brt_toggle_simplify(bpy.types.Operator):
-    bl_idname = "brt.toggle_simp"
-    bl_label = "Toggle Viewport Simplify between on and off"
-    bl_options = {'REGISTER', 'UNDO'}
-    
-    @classmethod
-    def poll(cls, context):
-        return True
-    
-    def execute(self, context):
-        context.scene.render.simplify_subdivision = 0
-        context.scene.render.use_simplify = not context.scene.render.use_simplify
-        self.report({'INFO'}, "Simplify: {}"
-            .format(['Off','On'][context.scene.render.use_simplify]))
         return {'FINISHED'}
 
 @register_wrap
@@ -1406,6 +1492,52 @@ class POSE_ARMATURE_OT_clear_to_bind(bpy.types.Operator):
         return {'FINISHED'}
 
 @register_wrap
+class POSE_ARMATURE_OT_config_ik(bpy.types.Operator):
+    bl_idname = "brt.config_ik"
+    bl_label = "Configure IK Rig"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        csp_rig = False
+        target_rig = False
+        objects = [obj for obj in context.scene.objects if "BRT" in obj]
+        for obj in objects :
+            if obj["BRT"] == 'CSPUR':
+                csp_rig = True
+            if obj["BRT"] == 'TARGET':
+                target_rig = True
+        return csp_rig and target_rig
+
+    def execute(self,context):
+        print("Adjusting IK Rig to target")
+        initRig(context)
+        return {'FINISHED'}
+
+@register_wrap
+class POSE_ARMATURE_OT_bind_ik(bpy.types.Operator):
+    bl_idname = "brt.bind_ik"
+    bl_label = "Bind IK Rig"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        csp_rig = False
+        target_rig = False
+        objects = [obj for obj in context.scene.objects if "BRT" in obj]
+        for obj in objects :
+            if obj["BRT"] == 'CSPUR':
+                csp_rig = True
+            if obj["BRT"] == 'TARGET':
+                target_rig = True
+        return csp_rig and target_rig
+
+    def execute(self,context):
+        print("Binding IK Rig to target")
+        bindToIK(context)
+        return {'FINISHED'}
+
+@register_wrap
 class IMAGE_OT_reload_textures(bpy.types.Operator):
     bl_idname = "brt.reload_textures"
     bl_label = "Reload all texture images"
@@ -1420,7 +1552,7 @@ class DATA_OT_brt_purge(bpy.types.Operator):
     bl_label = "Purge Un-used data"
 
     def execute(self, context):
-        bpy.ops.outliner.orphans_purge()
+        bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
         return {'FINISHED'}
 
 @register_wrap
@@ -1428,7 +1560,7 @@ class IMAGE_OT_reload_and_render(bpy.types.Operator):
     bl_idname = "brt.reload_and_render"
     bl_label = "Reload all textures and render"
     
-    def execute(self,context):
+    def execute(self, context):
         update_images();
         if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
             bpy.ops.cameramanager.render_scene_camera(renderFrom='PROPERTIES')
@@ -1448,12 +1580,82 @@ class IMAGE_OT_reload_and_render_all(bpy.types.Operator):
 #-----------------------------------------
 
 @register_wrap
+class creasePG(PropertyGroup):
+
+    @classmethod
+    def poll(cls, context):
+        current_mode = bpy.context.mode
+        if current_mode == 'EDIT_MESH':
+            return True
+        else:
+            return False
+    
+    def update_edgeCrease( self, context ):
+            ''' Update function for edgeCrease property '''
+    
+            o  = bpy.context.object
+            d  = o.data
+            bm = bmesh.from_edit_mesh( d )
+    
+            #creaseLayer = bm.edges.layers.crease['SubSurfCrease']
+            creaseLayer = bm.edges.layers.crease.verify()
+    
+            if self.whoToInfluence == 'Selected Elements':
+                selectedEdges = [ e for e in bm.edges if e.select ]
+                for e in selectedEdges: e[ creaseLayer ] = self.edgeCrease
+            else:
+                for e in bm.edges: e[ creaseLayer ] = self.edgeCrease
+    
+            bmesh.update_edit_mesh( d )
+    
+    items = [
+        ('All', 'All', ''),
+        ('Selected Elements', 'Selected Elements', '')
+    ]
+
+    whoToInfluence = bpy.props.EnumProperty( # Material distribution method
+        description = "Influence all / selection",
+        name        = "whoToInfluence",
+        items       = items,
+        default     = 'Selected Elements'
+    )
+
+    edgeCrease = bpy.props.FloatProperty(
+        description = "Edge Crease",
+        name        = "Edge Crease",
+        min         = 0.0,
+        max         = 1.0,
+        soft_min    = 0.0,
+        soft_max    = 1.0,
+        step        = 1,
+        default     = 0,
+        update      = update_edgeCrease
+    )
+    
+    def get_crease_selected():
+        o  = bpy.context.object
+        d  = o.data
+        bm = bmesh.from_edit_mesh( d )
+    
+        creaseLayer = bm.edges.layers.crease.verify()
+    
+        selectedEdges = ""
+        for e in bm.edges:
+            if e.select:
+                selectedEdges += (str(round(e[ creaseLayer ], 2)) + ' ')
+        return selectedEdges
+
+    
+
+#-----------------------------------------
+
+@register_wrap
 class POSE_ARMATURE_PT_brt_panel(bpy.types.Panel):
     bl_idname = "POSE_ARMATURE_PT_brt_panel"
     bl_label = "Brawl Rendering Toolkit"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "BRT"
+    bl_category = "Brawl"
 
     
     def draw(self,context):
@@ -1468,7 +1670,7 @@ class POSE_ARMATURE_PT_brt_panel(bpy.types.Panel):
 class ARMATURES_PT_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "BRT"
+    bl_category = "Brawl"
     bl_parent_id = "POSE_ARMATURE_PT_brt_panel"
     bl_idname = "ARMATURES_PT_panel"
     bl_label = "Armatures"
@@ -1479,9 +1681,6 @@ class ARMATURES_PT_panel(bpy.types.Panel):
 
         row = layout.column(align = True)
         row.prop_search(
-            scene, 'armature', bpy.data, "objects", text='Main', icon='ARMATURE_DATA' 
-        )
-        row.prop_search(
             scene, 'proxy', bpy.data, "objects", text='Proxy', icon='ARMATURE_DATA' 
         )
 
@@ -1489,7 +1688,7 @@ class ARMATURES_PT_panel(bpy.types.Panel):
 class IMPORT_PT_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "BRT"
+    bl_category = "Brawl"
     bl_parent_id = "POSE_ARMATURE_PT_brt_panel"
     bl_options = {"DEFAULT_CLOSED"}
     bl_idname = "IMPORT_PT_panel"
@@ -1500,7 +1699,6 @@ class IMPORT_PT_panel(bpy.types.Panel):
         scene = bpy.context.scene
         
         row = layout.row(align=True)
-        op = row.operator(OBJECT_OT_brawlcrate_fbx_import.bl_idname,text='FBX')
         op = row.operator(OBJECT_OT_brawlcrate_collada_import.bl_idname,text='DAE')
         op = row.operator(POSE_OT_brawlcrate_anim_import.bl_idname,text='ANIM')
         
@@ -1509,12 +1707,18 @@ class IMPORT_PT_panel(bpy.types.Panel):
         row = layout.column(align=True)
         op = row.operator(DATA_OT_brt_init_polish_setup.bl_idname,text='Setup for Manual Polish',icon='SPHERE')
         op = row.operator(OBJECT_OT_brt_set_object_mods.bl_idname,text='Apply Default Modfiers',icon='MODIFIER')
+        
+        layout.row().separator()
+        layout.row().separator()
+        row = layout.column(align=True)
+        op = row.operator(POSE_ARMATURE_OT_config_ik.bl_idname,text='Configure IK',icon='POSE_HLT')
+        op = row.operator(POSE_ARMATURE_OT_bind_ik.bl_idname,text='Bind IK Rig',icon='CON_ARMATURE')
 
 @register_wrap
 class POLISH_PT_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "BRT"
+    bl_category = "Brawl"
     bl_parent_id = "POSE_ARMATURE_PT_brt_panel"
     bl_options = {"DEFAULT_CLOSED"}
     bl_idname = "POLISH_PT_panel"
@@ -1525,14 +1729,11 @@ class POLISH_PT_panel(bpy.types.Panel):
         scene = bpy.context.scene
         props = context.scene.creasePG
         
-        column = layout.column(align=False)
-        op = column.operator(DATA_OT_brt_toggle_simplify.bl_idname,text='Toggle Simplify',icon='MOD_SIMPLIFY')
-        column.separator()
-        column.label(text='Edge Operations')
-        box = column.box()
+        box = layout.box()
+        box.label(text='Edge Operations:')
         col = box.column(align=True)
-        col.label(text='Crease')
-        row = col.row(align=True)
+        col.prop(props, "edgeCrease")
+        row = col.row(align=True,heading="Crease")
         op = row.operator(MESH_OT_brt_crease.bl_idname,text='0.0')
         op.crease_value = 0.0
         op = row.operator(MESH_OT_brt_crease.bl_idname,text='0.3')
@@ -1543,9 +1744,8 @@ class POLISH_PT_panel(bpy.types.Panel):
         op.crease_value = 0.7
         op = row.operator(MESH_OT_brt_crease.bl_idname,text='1.0')
         op.crease_value = 1.0
-        col.separator()
-        col.label(text='Sharp')
-        row =col.row(align=True)
+        box.label(text='Sharp:')
+        row = box.row(align=True)
         op = row.operator(MESH_OT_brt_sharp.bl_idname,text='Mark')
         op.clear_sharp = False
         op = row.operator(MESH_OT_brt_sharp.bl_idname,text='Remove')
@@ -1555,7 +1755,7 @@ class POLISH_PT_panel(bpy.types.Panel):
 class POSING_PT_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "BRT"
+    bl_category = "Brawl"
     bl_parent_id = "POSE_ARMATURE_PT_brt_panel"
     bl_options = {"DEFAULT_CLOSED"}
     bl_idname = "POSING_PT_panel"
@@ -1566,10 +1766,8 @@ class POSING_PT_panel(bpy.types.Panel):
         scene = bpy.context.scene
         
         column = layout.column(align=True)
-        column.label(text='Proxy')
-        row = column.row(align=True)
-        op = row.operator(OBJECT_OT_brt_toggle_proxy.bl_idname,text='Toggle')
-        op = row.operator(POSE_ARMATURE_OT_clear_to_bind.bl_idname,text='Reset')
+        op = column.operator(OBJECT_OT_brt_toggle_proxy.bl_idname,text='Toggle Proxy')
+        op = column.operator(POSE_ARMATURE_OT_clear_to_bind.bl_idname,text='Reset Proxy')
         op.clear_location=True
         op.clear_rotation=True
         op.clear_scale=True
@@ -1578,7 +1776,7 @@ class POSING_PT_panel(bpy.types.Panel):
 class UTILITY_PT_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = "BRT"
+    bl_category = "Brawl"
     bl_parent_id = "POSE_ARMATURE_PT_brt_panel"
     bl_options = {"DEFAULT_CLOSED"}
     bl_idname = "UTILITY_PT_panel"
@@ -1608,18 +1806,22 @@ class UTILITY_PT_panel(bpy.types.Panel):
 
 def register():
     bpy.types.Scene.proxy = bpy.props.StringProperty(default="")
-    bpy.types.Scene.armature = bpy.props.StringProperty(default="")
+    bpy.types.Scene.target = bpy.props.StringProperty(default="")
+    bpy.types.Scene.cspur = bpy.props.StringProperty(default="")
     bpy.types.Scene.edit_mode = bpy.props.BoolProperty(default=False)
     
     from bpy.utils import register_class
     for cls in __bl_classes:
         register_class(cls)
+            
+    bpy.types.Scene.creasePG = bpy.props.PointerProperty( type = creasePG )
 
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
     
 def unregister():
     del bpy.types.Scene.proxy
-    del bpy.types.Scene.armature
+    del bpy.types.Scene.target
+    del bpy.types.Scene.cspur
     
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     
