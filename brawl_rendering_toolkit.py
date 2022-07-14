@@ -63,6 +63,7 @@ Current workflow:
 
 '''
 __bl_classes = []
+blm_rig_id = "CSPUR"
 
 class ContextOverride(dict):
     '''
@@ -951,7 +952,7 @@ def create_identityRigBC(context):
         var.name = 'loc'
         var.targets[0].id = bpy.data.objects['Con.Proxy']
         var.targets[0].data_path='location.x'
-        con_drv.expression = ' loc < 0'
+        con_drv.expression = ' loc < 0.01'
 
     context.view_layer.objects.active  = dummy_object
     dummy_object['brawl_root'] = active_object['brawl_root']
@@ -1004,6 +1005,7 @@ def initRig(context):
     bind_list = [
         ['CFG.Hip','HipN'],
         ['CFG.Waist','BodyN'],
+        ['CFG.Waist','WaistN'],
         ['CFG.Bust','BustN'],
         ['CFG.Neck','NeckN'],
         ['CFG.Head','HeadN'],
@@ -1041,21 +1043,24 @@ def initRig(context):
     context.view_layer.objects.active = cspur
     if context.mode != 'POSE':
         bpy.ops.object.mode_set(mode='POSE', toggle=False)
-    
+
     tog_bone = cspur.pose.bones.get('CFG.Toggle')
     tog_bone.rotation_mode = 'XYZ'
     tog_bone.rotation_euler = [0, radians(-45), 0]
 
     for bone_pair in bind_list:
-        bpy.ops.pose.select_all(action='DESELECT')
-        csp_bone = cspur.pose.bones.get(bone_pair[0])
         target_bone = target.pose.bones.get(bone_pair[1])
-        csp_bone.bone.select = True
-        context.object.data.bones.active = csp_bone.bone
-        scene.cursor.location = (target.matrix_world @ target_bone.matrix).to_translation() 
-        mat_world = context.object.convert_space(pose_bone=csp_bone, matrix=csp_bone.matrix, from_space='POSE', to_space='WORLD')
-        mat_world.translation = scene.cursor.location
-        csp_bone.matrix = context.object.convert_space(pose_bone=csp_bone, matrix=mat_world, from_space='WORLD', to_space='POSE')
+        if target_bone is not None:
+            csp_bone = cspur.pose.bones.get(bone_pair[0])
+            bpy.ops.pose.select_all(action='DESELECT')
+            csp_bone.bone.select = True
+            context.object.data.bones.active = csp_bone.bone
+            scene.cursor.location = (target.matrix_world @ target_bone.matrix).to_translation() 
+            mat_world = context.object.convert_space(pose_bone=csp_bone, matrix=csp_bone.matrix, from_space='POSE', to_space='WORLD')
+            mat_world.translation = scene.cursor.location
+            csp_bone.matrix = context.object.convert_space(pose_bone=csp_bone, matrix=mat_world, from_space='WORLD', to_space='POSE')
+        else:
+            print(bone_pair[1] + " doesn't exist. Skipping...")
     scene.cursor.matrix = cursor_mat_original
     bpy.ops.pose.select_all(action='DESELECT')
     cspur.data.layers[0] = True
@@ -1108,7 +1113,22 @@ def bindToIK(context):
             if cspb.name == bone.name:
                 matched_bone = True
                 for constraint in {'COPY_LOCATION', 'COPY_ROTATION', 'COPY_SCALE'}:
-                    c = bone.constraints.new(constraint)
+                    name =''
+                    constraint_exists = False
+                    if constraint == 'COPY_LOCATION':
+                        name = "BRT Copy Location"
+                    elif constraint == 'COPY_ROTATION':
+                        name = "BRT Copy Rotation"
+                    elif constraint == 'COPY_SCALE':
+                        name = "BRT Copy Scale"
+                    for con in bone.constraints:
+                        if con.name == name:
+                            constraint_exists = True
+                    if not constraint_exists:
+                        c = bone.constraints.new(constraint)
+                        c.name = "BRT " + c.name
+                    else:
+                        c = bone.constraints.get(name)
                     c.target = cspur
                     c.subtarget = cspb.name
                     if constraint == 'COPY_SCALE':
@@ -1119,7 +1139,10 @@ def bindToIK(context):
                     var.name = 'loc'
                     var.targets[0].id = bpy.data.objects['Con.Proxy']
                     var.targets[0].data_path='location.x'
-                    d.expression = ' loc >= 0'
+                    if constraint == 'COPY_SCALE':
+                        d.expression = ' loc >= 0.01'
+                    else:
+                        d.expression = ' loc >= 0'
     for i in range(32):
         if any(i == layer for layer in {8, 9, 10, 11, 12, 13, 14}):
             cspur.data.layers[i] = True
@@ -1802,13 +1825,144 @@ class UTILITY_PT_panel(bpy.types.Panel):
             op = column.operator(IMAGE_OT_reload_and_render.bl_idname,text="Render Current Camera", icon='OUTLINER_OB_IMAGE')
             op = column.operator(IMAGE_OT_reload_and_render_all.bl_idname,text="Render All Cameras", icon='RENDER_RESULT')
 
+@register_wrap
+class BLOP_PT_rigui_CSPUR(bpy.types.Panel):
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'UI'
+	bl_category = 'Brawl'
+	bl_label = "Rig UI"
+	bl_idname = "BLOP_PT_rigui_CSPUR"
+
+	@classmethod
+	def poll(self, context):
+		try:
+			return (context.active_object.data.get("blm_rig_id") == blm_rig_id)
+		except (AttributeError, KeyError, TypeError):
+			return False
+
+	def draw(self, context):
+		layout = self.layout
+		col = layout.column()
+
+
+		row = col.row(align=True)
+		row.prop(context.active_object.data,'layers', index=8, toggle=True, text='Center')
+
+		row = col.row(align=True)
+		row.prop(context.active_object.data,'layers', index=9, toggle=True, text='Right Arm')
+		row.prop(context.active_object.data,'layers', index=12, toggle=True, text='Left Arm')
+
+		row = col.row(align=True)
+		row.prop(context.active_object.data,'layers', index=10, toggle=True, text='Right Hand')
+		row.prop(context.active_object.data,'layers', index=13, toggle=True, text='Left Hand')
+
+		row = col.row(align=True)
+		row.prop(context.active_object.data,'layers', index=11, toggle=True, text='Right Foot')
+		row.prop(context.active_object.data,'layers', index=14, toggle=True, text='Left Foot')
+
+		row = col.row(align=True)
+		row.prop(context.active_object.data,'layers', index=15, toggle=True, text='Fine Controls')
+
+		row = col.row(align=True)
+		row.prop(context.active_object.data,'layers', index=0, toggle=True, text='Config')
+		row.prop(context.active_object.data,'layers', index=2, toggle=True, text='Apply')
+
+		row = col.row(align=True)
+		row.prop(context.active_object.data,'layers', index=30, toggle=True, text='Deform Tweak')
+
+@register_wrap
+class BLOP_PT_customprops_CSPUR(bpy.types.Panel):
+	bl_category = 'Brawl'
+	bl_label = "Rig Properties"
+	bl_idname = "BLOP_PT_customprops_CSPUR"
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'UI'
+	bl_options = {'DEFAULT_CLOSED'}
+
+	@classmethod
+	def poll(self, context):
+		if context.active_object.data.get('blm_rig_id'):
+			pose_bones = context.selected_pose_bones
+			props = None
+			rna_properties = {prop.identifier for prop in bpy.types.PoseBone.bl_rna.properties if prop.is_runtime}
+			if context.selected_pose_bones:
+				bones = context.selected_pose_bones
+
+			elif context.selected_editable_bones:
+				bones = [pose_bones[bone.name] for bone in context.selected_editable_bones]
+
+			elif context.mode == 'OBJECT':
+				bones = context.active_object.pose.bones
+
+			else:
+				return False
+			if bones:
+				props = [[prop for prop in bone.items() if prop not in rna_properties] for bone in bones]
+
+			if props and bones:
+				return (context.active_object.data.get("blm_rig_id") == blm_rig_id)
+			else:
+				return False
+
+		else:
+			return False
+
+	def draw(self, context):
+		layout = self.layout
+		pose_bones = context.active_object.pose.bones
+		if context.selected_pose_bones:
+			bones = context.selected_pose_bones
+
+		elif context.selected_editable_bones:
+			bones = [pose_bones[bone.name] for bone in context.selected_editable_bones]
+
+		else:
+			bones = context.active_object.pose.bones
+
+		def assign_props(row, val, key):
+			row.property = key
+			row.data_path = "active_pose_bone"
+			try:
+				row.value = str(val)
+			except:
+				pass
+
+		rna_properties = {
+			prop.identifier for prop in bpy.types.PoseBone.bl_rna.properties
+			if prop.is_runtime
+		}
+
+	# make scripts backwards compatible
+		skip = 0
+		skip_keys = rna_properties
+		if bpy.app.version < (3, 0, 0):
+			skip_keys = rna_properties.union({"_RNA_UI"})
+			skip = 1
+	# Iterate through selected bones add each prop property of each bone to the panel.
+
+		for bone in context.selected_pose_bones:
+			if len(bone.keys()) > skip:
+				box = layout.box()
+			for key in sorted(bone.keys()):
+				if key not in skip_keys:
+					val = bone.get(key, "value")
+					row = box.row()
+					split = row.split(align=True, factor=0.7)
+					row = split.row(align=True)
+					row.label(text=key, translate=False)
+					row = split.row(align=True)
+					row.prop(bone, f'["{key}"]', text = "", slider=True)
+
 #-----------------------------------------
+
+classes = (BLOP_PT_rigui_CSPUR, BLOP_PT_customprops_CSPUR, )
 
 def register():
     bpy.types.Scene.proxy = bpy.props.StringProperty(default="")
     bpy.types.Scene.target = bpy.props.StringProperty(default="")
     bpy.types.Scene.cspur = bpy.props.StringProperty(default="")
     bpy.types.Scene.edit_mode = bpy.props.BoolProperty(default=False)
+    bpy.utils.register_classes_factory(classes)
     
     from bpy.utils import register_class
     for cls in __bl_classes:
@@ -1822,6 +1976,7 @@ def unregister():
     del bpy.types.Scene.proxy
     del bpy.types.Scene.target
     del bpy.types.Scene.cspur
+    bpy.utils.register_classes_factory(classes)
     
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     
