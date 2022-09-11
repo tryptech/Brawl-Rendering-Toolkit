@@ -10,7 +10,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 bl_info = {
     "name": "Brawl Rendering Toolkit",
     "author": "tryptech, Wayde Brandon Moss",
-    "version": (1, 1, 0),
+    "version": (1, 2, 0),
     "blender": (2, 81, 0),
     "location": "View3D > Sidebar > Tool",
     "description": "Super Smash Bros. Brawl Rendering Tools and Shortcuts",
@@ -32,10 +32,13 @@ from math import atan2, ceil, cos, degrees, floor, isclose, pi, radians, sin,tan
 
 import bpy
 import bmesh
-from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty,CollectionProperty
+from bpy.props import BoolProperty, EnumProperty, IntProperty, StringProperty, CollectionProperty, PointerProperty
 from bpy.types import PropertyGroup, Operator, OperatorFileListElement, Scene
 from bpy_extras.io_utils import ExportHelper, ImportHelper
 from mathutils import Euler, Matrix, Quaternion, Vector
+
+if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
+    from render_button import SCENECAMERA_OT_BatchRenderAll as bra
 
 '''
 Current workflow:
@@ -1173,6 +1176,12 @@ def update_images():
 
 #-----------------------------------------
 
+class Toolkit_Settings(bpy.types.PropertyGroup):
+    batchRenderDone : bpy.props.BoolProperty(
+        name="Batch Finished",
+        description="Set when CameraManager finishes a render",
+        default=False
+    )
 @register_wrap
 class OBJECT_OT_brawlcrate_collada_import(Operator, ImportHelper):
 
@@ -1584,7 +1593,7 @@ class IMAGE_OT_reload_and_render(bpy.types.Operator):
     bl_label = "Reload all textures and render"
     
     def execute(self, context):
-        update_images();
+        update_images()
         if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
             bpy.ops.cameramanager.render_scene_camera(renderFrom='PROPERTIES')
         return{'FINISHED'}
@@ -1595,10 +1604,121 @@ class IMAGE_OT_reload_and_render_all(bpy.types.Operator):
     bl_label = "Reload all textures and render all cameras"
     
     def execute(self,context):
-        update_images();
+        update_images()
+        if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
+            bpy.ops.cameramanager.render_all_camera()
+        return{'FINISHED'}
+
+@register_wrap
+class IMAGE_OT_reload_and_render_anim(bpy.types.Operator):
+    bl_idname = "brt.reload_and_render_anim"
+    bl_label = "Reload all textures and render"
+    
+    def execute(self, context):
+        update_images()
         if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
             bpy.ops.cameramanager.render_scene_camera(renderFrom='PROPERTIES')
         return{'FINISHED'}
+
+@register_wrap
+class IMAGE_OT_reload_and_render_all_anim(bpy.types.Operator):
+    bl_idname = "brt.reload_and_render_all_anim"
+    bl_label = "Reload all textures and render all cameras for the entire animation"
+
+    _timer = None
+    path = path_root = ""
+    rsSIBF = False
+    start_frame = end_frame = current_frame = 0
+
+    def __init__(self):
+        print("Start")
+
+    def __del__(self):
+        print("End")
+
+    def modal_wrap(self, modal_func, thrd=None):
+        def wrap(self, context, event):
+            ret, = retset = modal_func(self, context, event)
+            if ret in {'FINISHED', 'CANCELLED'}:
+                s = context.scene
+                tk = s.BRT_Settings
+                tk.batchRenderDone = True
+            return retset
+        return wrap
+
+    def updateFilePath(self, context):
+        s = context.scene
+
+        frame_string = ""
+        frame_length = max(len(str(self.end_frame)),2)
+        current_frame_str = str(self.current_frame)
+        for i in range(frame_length - len(current_frame_str)):
+            frame_string += "0"
+        frame_string += str(self.current_frame)
+        frame_string += "_"
+        s.render.filepath = self.path_root + frame_string
+
+    def execute(self, context):
+        print('EXECUTING')
+        bpy.ops.cameramanager.render_all_camera()
+        return {'FINISHED'}
+
+    def modal(self, context, event):
+        s = context.scene
+        tk = s.BRT_Settings
+        rs = s.RBTab_Settings
+
+        if event.type == 'TIMER':
+            if tk.batchRenderDone:
+                if self.current_frame >= self.end_frame:
+                    self.current_frame -= 1
+                    s.frame_current  = self.current_frame
+                    s.render.filepath = self.path_root
+                    rs.saveInBlendFolder = self.rsSIBF
+                    return {'FINISHED'}
+                else:
+                    self.current_frame += 1
+                    s.frame_current = self.current_frame
+                    tk.batchRenderDone = False
+                    self.updateFilePath(context)
+                    self.execute(context)
+
+        return {'PASS_THROUGH'}
+
+    def invoke(self, context, event):
+        print("INVOKING")
+
+        bra._modal_org = bra.modal
+        bra.modal = self.modal_wrap(bra.modal)
+
+        s = context.scene
+        tk = s.BRT_Settings
+        rs = s.RBTab_Settings
+
+        self.path = s.render.filepath
+        tk.batchRenderDone = False
+
+        self.rsSIBF = rs.saveInBlendFolder
+        rs.saveInBlendFolder = False
+
+        self.start_frame = s.frame_preview_start if s.use_preview_range else s.frame_start
+        self.end_frame = s.frame_preview_end if s.use_preview_range else s.frame_end
+        isDS = True if self.path == '//' else False
+        localPath = bpy.path.abspath(self.path)
+
+        s.frame_current = self.start_frame
+        self.path_root = localPath if isDS else self.path
+        self.updateFilePath(context)
+        self.execute(context)
+
+        wm = context.window_manager
+        self._timer = wm.event_timer_add(0.25, window=context.window)
+        wm.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+
+    def cancel(self, context):
+        wm = context.window_manager
+        wm.event_timer_remove(self._timer)
 
 #-----------------------------------------
 
@@ -1668,8 +1788,6 @@ class creasePG(PropertyGroup):
                 selectedEdges += (str(round(e[ creaseLayer ], 2)) + ' ')
         return selectedEdges
 
-    
-
 #-----------------------------------------
 
 @register_wrap
@@ -1695,6 +1813,7 @@ class ARMATURES_PT_panel(bpy.types.Panel):
     bl_region_type = 'UI'
     bl_category = "Brawl"
     bl_parent_id = "POSE_ARMATURE_PT_brt_panel"
+    bl_options = {"DEFAULT_CLOSED"}
     bl_idname = "ARMATURES_PT_panel"
     bl_label = "Armatures"
     
@@ -1796,6 +1915,81 @@ class POSING_PT_panel(bpy.types.Panel):
         op.clear_scale=True
 
 @register_wrap
+class RENDER_PT_panel(bpy.types.Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Brawl"
+    bl_parent_id = "POSE_ARMATURE_PT_brt_panel"
+    bl_options = {"DEFAULT_CLOSED"}
+    bl_idname = "RENDER_PT_panel"
+    bl_label = "Render"
+
+    def draw(self, context):
+        layout = self.layout.column(align=True)
+        scene = bpy.context.scene
+        rs = scene.RBTab_Settings
+        anim_render = rs.switchStillAnim_prop
+        saveInLocalFolder = rs.saveInBlendFolder
+
+        if bpy.data.is_saved == False:
+            layout.use_property_split = False
+            row = layout.row(align=True)
+            row.alignment='CENTER'
+            row.alert = True
+            row.label(text=' Save Blend File First  --->', icon='INFO')
+            row.operator('wm.save_mainfile', text='', icon='FILE_TICK')
+            row.alert = False
+
+        if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
+            if bpy.data.is_saved == False:
+                layout.use_property_split = False
+                row = layout.row(align=True)
+                row.alignment='CENTER'
+                row.alert = True
+                row.label(text=' Save Blend File First  --->', icon='INFO')
+                row.operator('wm.save_mainfile', text='', icon='FILE_TICK')
+                row.alert = False
+            else:
+                row = layout.row(align=True)
+
+                row.prop(rs,'saveInBlendFolder',text='Save in blend folder' if saveInLocalFolder else 'Save in custom path',icon='BLENDER')
+
+                row = layout.row(align=True)
+
+                if saveInLocalFolder == False:
+                    row.prop(scene.render, "filepath", text="")
+                    row = layout.row(align=True)
+
+                layout.row().separator()
+                layout.row().separator()
+                row = layout.row(align=True)
+
+                row.prop(scene, "frame_float" if scene.show_subframe else "frame_current", text="Current")
+                row.prop(rs, "switchStillAnim_prop", text="",icon='RENDER_ANIMATION')
+
+                if anim_render:
+                    row = layout.row(align=True)
+
+                    row.prop(scene, "use_preview_range", text="", toggle=True)
+
+                    sub = row.row(align=True)
+
+                    sub.prop(scene, "frame_preview_start" if scene.use_preview_range else "frame_start", text="Start")
+                    sub.prop(scene, "frame_preview_end" if scene.use_preview_range else "frame_end", text="End")
+
+                layout.row().separator()
+                layout.row().separator()
+                row = layout.column(align=True)
+
+                if anim_render:
+                    row.operator(IMAGE_OT_reload_and_render_anim.bl_idname,text="Render Current Camera w/ Recolors", icon='OUTLINER_OB_IMAGE')
+                    row.operator(IMAGE_OT_reload_and_render_all_anim.bl_idname,text="Render All Cameras w/ Recolors", icon='RENDER_RESULT')
+                else:
+                    row.operator(IMAGE_OT_reload_and_render.bl_idname,text="Render Current Camera", icon='OUTLINER_OB_IMAGE')
+                    row.operator(IMAGE_OT_reload_and_render_all.bl_idname,text="Render All Cameras", icon='RENDER_RESULT')
+
+
+@register_wrap
 class UTILITY_PT_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -1809,28 +2003,16 @@ class UTILITY_PT_panel(bpy.types.Panel):
         layout = self.layout.column(align=True)
         scene = bpy.context.scene
 
-        layout.row().separator()
-        row = layout.row(align=True)
-        op = row.operator(DATA_OT_brt_purge.bl_idname,text='Clean Unused Data',icon='TRASH')
-        
-        layout.row().separator()
-        layout.row().separator()
-        row = layout.row(align=True)
+        row = layout.column(align=True)
+        op = row.operator(DATA_OT_brt_purge.bl_idname,text='Clean Unused Data',icon='TRASH') 
         op = row.operator(IMAGE_OT_reload_textures.bl_idname,text='Reload Textures',icon='FILE_REFRESH')
-        
-        if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
-            layout.row().separator()
-            layout.row().separator()
-            column = layout.column(align=True)
-            op = column.operator(IMAGE_OT_reload_and_render.bl_idname,text="Render Current Camera", icon='OUTLINER_OB_IMAGE')
-            op = column.operator(IMAGE_OT_reload_and_render_all.bl_idname,text="Render All Cameras", icon='RENDER_RESULT')
 
 @register_wrap
 class BLOP_PT_rigui_CSPUR(bpy.types.Panel):
 	bl_space_type = 'VIEW_3D'
 	bl_region_type = 'UI'
 	bl_category = 'Brawl'
-	bl_label = "Rig UI"
+	bl_label = "CSPUR UI"
 	bl_idname = "BLOP_PT_rigui_CSPUR"
 
 	@classmethod
@@ -1873,7 +2055,7 @@ class BLOP_PT_rigui_CSPUR(bpy.types.Panel):
 @register_wrap
 class BLOP_PT_customprops_CSPUR(bpy.types.Panel):
 	bl_category = 'Brawl'
-	bl_label = "Rig Properties"
+	bl_label = "CSPUR Properties"
 	bl_idname = "BLOP_PT_customprops_CSPUR"
 	bl_space_type = 'VIEW_3D'
 	bl_region_type = 'UI'
@@ -1955,7 +2137,10 @@ class BLOP_PT_customprops_CSPUR(bpy.types.Panel):
 
 #-----------------------------------------
 
-classes = (BLOP_PT_rigui_CSPUR, BLOP_PT_customprops_CSPUR, )
+classes = (
+            BLOP_PT_rigui_CSPUR,
+            BLOP_PT_customprops_CSPUR,
+        )
 
 def register():
     bpy.types.Scene.proxy = bpy.props.StringProperty(default="")
@@ -1963,7 +2148,10 @@ def register():
     bpy.types.Scene.cspur = bpy.props.StringProperty(default="")
     bpy.types.Scene.edit_mode = bpy.props.BoolProperty(default=False)
     bpy.utils.register_classes_factory(classes)
+    bpy.utils.register_class(Toolkit_Settings)
     
+    Scene.BRT_Settings = PointerProperty(type=Toolkit_Settings)
+
     from bpy.utils import register_class
     for cls in __bl_classes:
         register_class(cls)
@@ -1977,6 +2165,8 @@ def unregister():
     del bpy.types.Scene.target
     del bpy.types.Scene.cspur
     bpy.utils.register_classes_factory(classes)
+
+    del Scene.BRT_Settings
     
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     
@@ -1986,4 +2176,8 @@ def unregister():
 
 #unregister()
 if __name__ == "__main__":
+    try:
+        unregister()
+    except:
+        pass
     register()

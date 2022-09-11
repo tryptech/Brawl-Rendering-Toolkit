@@ -116,3 +116,4 @@ dmypy.json
 brawl_rendering_toolkit/
 __init.py__
 brawl_rendering_toolkit.zip
+render_button.py
