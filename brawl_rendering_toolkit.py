@@ -1590,18 +1590,18 @@ class DATA_OT_brt_purge(bpy.types.Operator):
 @register_wrap
 class IMAGE_OT_reload_and_render(bpy.types.Operator):
     bl_idname = "brt.reload_and_render"
-    bl_label = "Reload all textures and render"
+    bl_label = "Reload all textures and render active camera on the current frame"
     
     def execute(self, context):
         update_images()
         if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
-            bpy.ops.cameramanager.render_scene_camera(renderFrom='PROPERTIES')
+            bpy.ops.cameramanager.render_scene_camera()
         return{'FINISHED'}
         
 @register_wrap
 class IMAGE_OT_reload_and_render_all(bpy.types.Operator):
     bl_idname = "brt.reload_and_render_all"
-    bl_label = "Reload all textures and render all cameras"
+    bl_label = "Reload all textures and render all cameras on the current frame"
     
     def execute(self,context):
         update_images()
@@ -1612,12 +1612,12 @@ class IMAGE_OT_reload_and_render_all(bpy.types.Operator):
 @register_wrap
 class IMAGE_OT_reload_and_render_anim(bpy.types.Operator):
     bl_idname = "brt.reload_and_render_anim"
-    bl_label = "Reload all textures and render"
+    bl_label = "Reload all textures and render active camera for the entire animation"
     
     def execute(self, context):
         update_images()
         if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
-            bpy.ops.cameramanager.render_scene_camera(renderFrom='PROPERTIES')
+            bpy.ops.cameramanager.render_scene_animation()
         return{'FINISHED'}
 
 @register_wrap
@@ -1632,6 +1632,7 @@ class IMAGE_OT_reload_and_render_all_anim(bpy.types.Operator):
 
     def __init__(self):
         print("Start")
+        update_images()
 
     def __del__(self):
         print("End")
