@@ -1182,6 +1182,7 @@ class Toolkit_Settings(bpy.types.PropertyGroup):
         description="Set when CameraManager finishes a render",
         default=False
     )
+
 @register_wrap
 class OBJECT_OT_brawlcrate_collada_import(Operator, ImportHelper):
 
