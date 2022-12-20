@@ -10,7 +10,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 bl_info = {
     "name": "Brawl Rendering Toolkit",
     "author": "tryptech, Wayde Brandon Moss",
-    "version": (1, 2, 2),
+    "version": (1, 2, 3),
     "blender": (2, 81, 0),
     "location": "View3D > Sidebar > Tool",
     "description": "Super Smash Bros. Brawl Rendering Tools and Shortcuts",
@@ -1005,7 +1005,7 @@ def set_obj_mods(obj, context):
     arm1.object = context.scene.objects.get("DAE_Armature")
 
 def initRig(context):
-    bind_list = [
+    bind_list_head = [
         ['CFG.Hip','HipN'],
         ['CFG.Waist','BodyN'],
         ['CFG.Waist','WaistN'],
@@ -1031,6 +1031,13 @@ def initRig(context):
         ['CFG.FingerPinky.1.L','L4thNa'],
         ['CFG.FingerPinky.2.L','L4thNb']
     ]
+    bind_list_tail = [
+        ['CFG.Thumb.Tip.L','LThumbNb'],
+        ['CFG.FingerIndex.Tip.L','L1stNb'],
+        ['CFG.FingerMiddle.Tip.L','L2ndNb'],
+        ['CFG.FingerRing.Tip.L','L3rdNb'],
+        ['CFG.FingerPinky.Tip.L','L4thNb']
+    ]
 
     scene = context.scene
     cspur = None
@@ -1051,19 +1058,34 @@ def initRig(context):
     tog_bone.rotation_mode = 'XYZ'
     tog_bone.rotation_euler = [0, radians(-45), 0]
 
-    for bone_pair in bind_list:
+    for bone_pair in bind_list_head:
+        csp_bone = cspur.pose.bones.get(bone_pair[0])
         target_bone = target.pose.bones.get(bone_pair[1])
-        if target_bone is not None:
-            csp_bone = cspur.pose.bones.get(bone_pair[0])
+        if not [var for var in (csp_bone, target_bone) if var is None]:
             bpy.ops.pose.select_all(action='DESELECT')
             csp_bone.bone.select = True
             context.object.data.bones.active = csp_bone.bone
-            scene.cursor.location = (target.matrix_world @ target_bone.matrix).to_translation() 
+            scene.cursor.location = (target.matrix_world @ target_bone.matrix).to_translation()
             mat_world = context.object.convert_space(pose_bone=csp_bone, matrix=csp_bone.matrix, from_space='POSE', to_space='WORLD')
             mat_world.translation = scene.cursor.location
             csp_bone.matrix = context.object.convert_space(pose_bone=csp_bone, matrix=mat_world, from_space='WORLD', to_space='POSE')
         else:
             print(bone_pair[1] + " doesn't exist. Skipping...")
+    
+    for bone_pair in bind_list_tail:
+        csp_bone = cspur.pose.bones.get(bone_pair[0])
+        target_bone = target.pose.bones.get(bone_pair[1])
+        if not [var for var in (csp_bone, target_bone) if var is None]:
+            bpy.ops.pose.select_all(action='DESELECT')
+            csp_bone.bone.select = True
+            context.object.data.bones.active = csp_bone.bone
+            scene.cursor.location = target.matrix_world @ target_bone.tail
+            mat_world = context.object.convert_space(pose_bone=csp_bone, matrix=csp_bone.matrix, from_space='POSE', to_space='WORLD')
+            mat_world.translation = scene.cursor.location
+            csp_bone.matrix = context.object.convert_space(pose_bone=csp_bone, matrix=mat_world, from_space='WORLD', to_space='POSE')
+        else:
+            print(bone_pair[1] + " doesn't exist. Skipping...")
+
     scene.cursor.matrix = cursor_mat_original
     bpy.ops.pose.select_all(action='DESELECT')
     cspur.data.layers[0] = True
