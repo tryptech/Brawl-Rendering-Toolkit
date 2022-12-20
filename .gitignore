@@ -113,7 +113,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-brawl_rendering_toolkit/
-__init.py__
+old_init.py
+brawl_rendering_toolkit.py
 brawl_rendering_toolkit.zip
 render_button.py
