@@ -10,7 +10,7 @@ import bpy, math, os, re
 import xml.etree.ElementTree as ET
 
 from bpy.props import BoolProperty, EnumProperty, StringProperty, CollectionProperty
-from bpy.types import Operator, OperatorFileListElement
+from bpy.types import Operator, OperatorFileListElement, Armature
 from bpy_extras.io_utils import ImportHelper
 from math import pi, tan
 from mathutils import  Matrix, Vector
@@ -237,7 +237,7 @@ def apply_bind_pose_to_action(context, remove_bind_pose=True):
             bpy.ops.anim.keyframe_insert_menu(type=keying_set.bl_idname, confirm_success=False)
 
 def poll_bindpose_import(context):
-    return (context.active_object is not None) and (isinstance(context.active_object.data, bpy.types.Armature))
+    return (context.active_object is not None) and (isinstance(context.active_object.data, Armature))
 
 def update_import_items(self, context):
     if ('MODEL' not in self.import_items) and (not poll_bindpose_import(context)):
@@ -1041,7 +1041,7 @@ class POSE_OT_brawlcrate_anim_import(Operator, ImportHelper):
 
     @classmethod
     def poll(cls, context):
-        return (context.active_object is not None) and isinstance(context.active_object.data, bpy.types.Armature)
+        return (context.active_object is not None) and isinstance(context.active_object.data, Armature)
 
     def execute(self, context):
         

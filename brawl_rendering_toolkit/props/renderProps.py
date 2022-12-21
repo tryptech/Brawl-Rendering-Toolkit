@@ -1,12 +1,26 @@
 import bpy
 
 from bpy.types import Scene, PropertyGroup
-from bpy.props import BoolProperty, PointerProperty
+from bpy.props import BoolProperty, PointerProperty, StringProperty
 
 #-----------------------------------------
 
 def register():
-    Scene.BRT_Settings = PointerProperty(type=Toolkit_Settings)
+    Scene.BRT_Settings = PointerProperty(
+        type=Toolkit_Settings
+    )
+    Scene.proxy = StringProperty(
+        default=""
+    )
+    Scene.target = StringProperty(
+        default=""
+    )
+    Scene.cspur = StringProperty(
+        default=""
+    )
+    Scene.edit_mode = BoolProperty(
+        default=False
+    )
 
 #-----------------------------------------
 

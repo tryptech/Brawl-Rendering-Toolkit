@@ -1,5 +1,6 @@
 import bpy
 
+from bpy.types import Panel, PoseBone
 from ..modules import brawlImport
 from ..operators import brtOps 
 
@@ -7,7 +8,7 @@ blm_rig_id = "CSPUR"
 
 #-----------------------------------------
 
-class POSE_ARMATURE_PT_brt_panel(bpy.types.Panel):
+class POSE_ARMATURE_PT_brt_panel(Panel):
     bl_idname = "POSE_ARMATURE_PT_brt_panel"
     bl_label = "Brawl Rendering Toolkit"
     bl_space_type = 'VIEW_3D'
@@ -23,7 +24,7 @@ class POSE_ARMATURE_PT_brt_panel(bpy.types.Panel):
         are the recreated functionality. (3DView->Tools->Animation->BrawlCrate->Clear)
         '''
 
-class ARMATURES_PT_panel(bpy.types.Panel): 
+class ARMATURES_PT_panel(Panel): 
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Brawl"
@@ -41,7 +42,7 @@ class ARMATURES_PT_panel(bpy.types.Panel):
             scene, 'proxy', bpy.data, "objects", text='Proxy', icon='ARMATURE_DATA' 
         )
 
-class IMPORT_PT_panel(bpy.types.Panel):
+class IMPORT_PT_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Brawl"
@@ -70,7 +71,7 @@ class IMPORT_PT_panel(bpy.types.Panel):
         op = row.operator(brtOps.POSE_ARMATURE_OT_config_ik.bl_idname,text='Configure IK',icon='POSE_HLT')
         op = row.operator(brtOps.POSE_ARMATURE_OT_bind_ik.bl_idname,text='Bind IK Rig',icon='CON_ARMATURE')
 
-class POSING_PT_panel(bpy.types.Panel):
+class POSING_PT_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Brawl"
@@ -90,7 +91,7 @@ class POSING_PT_panel(bpy.types.Panel):
         op.clear_rotation=True
         op.clear_scale=True
 
-class RENDER_PT_panel(bpy.types.Panel):
+class RENDER_PT_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Brawl"
@@ -163,7 +164,7 @@ class RENDER_PT_panel(bpy.types.Panel):
                     row.operator(brtOps.IMAGE_OT_reload_and_render.bl_idname,text="Render Current Camera", icon='OUTLINER_OB_IMAGE')
                     row.operator(brtOps.IMAGE_OT_reload_and_render_all.bl_idname,text="Render All Cameras", icon='RENDER_RESULT')
 
-class UTILITY_PT_panel(bpy.types.Panel):
+class UTILITY_PT_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "Brawl"
@@ -180,7 +181,7 @@ class UTILITY_PT_panel(bpy.types.Panel):
         op = row.operator(brtOps.DATA_OT_brt_purge.bl_idname,text='Clean Unused Data',icon='TRASH') 
         op = row.operator(brtOps.IMAGE_OT_reload_textures.bl_idname,text='Reload Textures',icon='FILE_REFRESH')
 
-class BLOP_PT_rigui_CSPUR(bpy.types.Panel):
+class BLOP_PT_rigui_CSPUR(Panel):
 	bl_space_type = 'VIEW_3D'
 	bl_region_type = 'UI'
 	bl_category = 'Brawl'
@@ -224,7 +225,7 @@ class BLOP_PT_rigui_CSPUR(bpy.types.Panel):
 		row = col.row(align=True)
 		row.prop(context.active_object.data,'layers', index=30, toggle=True, text='Deform Tweak')
 
-class BLOP_PT_customprops_CSPUR(bpy.types.Panel):
+class BLOP_PT_customprops_CSPUR(Panel):
 	bl_category = 'Brawl'
 	bl_label = "CSPUR Properties"
 	bl_idname = "BLOP_PT_customprops_CSPUR"
@@ -237,7 +238,7 @@ class BLOP_PT_customprops_CSPUR(bpy.types.Panel):
 		if context.active_object.data.get('blm_rig_id'):
 			pose_bones = context.selected_pose_bones
 			props = None
-			rna_properties = {prop.identifier for prop in bpy.types.PoseBone.bl_rna.properties if prop.is_runtime}
+			rna_properties = {prop.identifier for prop in PoseBone.bl_rna.properties if prop.is_runtime}
 			if context.selected_pose_bones:
 				bones = context.selected_pose_bones
 
@@ -281,7 +282,7 @@ class BLOP_PT_customprops_CSPUR(bpy.types.Panel):
 				pass
 
 		rna_properties = {
-			prop.identifier for prop in bpy.types.PoseBone.bl_rna.properties
+			prop.identifier for prop in PoseBone.bl_rna.properties
 			if prop.is_runtime
 		}
 

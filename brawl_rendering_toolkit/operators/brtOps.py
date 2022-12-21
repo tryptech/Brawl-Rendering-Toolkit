@@ -1,6 +1,7 @@
 import bpy
 
 from math import radians
+from bpy.types import Operator
 from bpy.props import BoolProperty
 from mathutils import Quaternion
 from ..modules import brawlImport
@@ -260,14 +261,14 @@ def update_images():
 
 #-----------------------------------------
 
-class DATA_OT_brt_init_polish_setup(bpy.types.Operator):
+class DATA_OT_brt_init_polish_setup(Operator):
     bl_idname = "brt.setup"
     bl_label = "Setup DAE for polish"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):    
-        return (context.scene.proxy != '')
+        return ('proxy' in context.scene)
 
     def execute(self, context):
         #replace with check_controls
@@ -291,7 +292,7 @@ class DATA_OT_brt_init_polish_setup(bpy.types.Operator):
         self.report({'INFO'}, "Initial polish done")
         return {'FINISHED'}
 
-class OBJECT_OT_brt_set_object_mods(bpy.types.Operator):
+class OBJECT_OT_brt_set_object_mods(Operator):
     bl_idname = "brt.mod"
     bl_label = "Apply Default Modifiers to Mesh Object"
     bl_options = {'REGISTER', 'UNDO'}
@@ -313,7 +314,7 @@ class OBJECT_OT_brt_set_object_mods(bpy.types.Operator):
             set_obj_mods(obj, context)
         return {'FINISHED'}
 
-class OBJECT_OT_brt_toggle_proxy(bpy.types.Operator):
+class OBJECT_OT_brt_toggle_proxy(Operator):
     bl_idname = "brt.toggle_proxy"
     bl_label = "Toggle use of proxy armature"
     bl_options = {'REGISTER', 'UNDO'}
@@ -328,7 +329,7 @@ class OBJECT_OT_brt_toggle_proxy(bpy.types.Operator):
         
         return {'FINISHED'}
 
-class POSE_ARMATURE_OT_clear_to_bind(bpy.types.Operator):
+class POSE_ARMATURE_OT_clear_to_bind(Operator):
     bl_idname = "brawlcrate.clear_to_bind"
     bl_label = "Clear To Bind"
     bl_options = {'REGISTER', 'UNDO'}
@@ -375,7 +376,7 @@ class POSE_ARMATURE_OT_clear_to_bind(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class POSE_ARMATURE_OT_config_ik(bpy.types.Operator):
+class POSE_ARMATURE_OT_config_ik(Operator):
     bl_idname = "brt.config_ik"
     bl_label = "Configure IK Rig"
     bl_options = {'REGISTER', 'UNDO'}
@@ -397,7 +398,7 @@ class POSE_ARMATURE_OT_config_ik(bpy.types.Operator):
         initRig(context)
         return {'FINISHED'}
 
-class POSE_ARMATURE_OT_bind_ik(bpy.types.Operator):
+class POSE_ARMATURE_OT_bind_ik(Operator):
     bl_idname = "brt.bind_ik"
     bl_label = "Bind IK Rig"
     bl_options = {'REGISTER', 'UNDO'}
@@ -419,7 +420,7 @@ class POSE_ARMATURE_OT_bind_ik(bpy.types.Operator):
         bindToIK(context)
         return {'FINISHED'}
 
-class IMAGE_OT_reload_textures(bpy.types.Operator):
+class IMAGE_OT_reload_textures(Operator):
     bl_idname = "brt.reload_textures"
     bl_label = "Reload all texture images"
     
@@ -427,7 +428,7 @@ class IMAGE_OT_reload_textures(bpy.types.Operator):
         update_images()
         return {'FINISHED'}
 
-class DATA_OT_brt_purge(bpy.types.Operator):
+class DATA_OT_brt_purge(Operator):
     bl_idname = "brt.purge"
     bl_label = "Purge Un-used data"
 
@@ -435,7 +436,7 @@ class DATA_OT_brt_purge(bpy.types.Operator):
         bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
         return {'FINISHED'}
 
-class IMAGE_OT_reload_and_render(bpy.types.Operator):
+class IMAGE_OT_reload_and_render(Operator):
     bl_idname = "brt.reload_and_render"
     bl_label = "Reload all textures and render active camera on the current frame"
     
@@ -445,7 +446,7 @@ class IMAGE_OT_reload_and_render(bpy.types.Operator):
             bpy.ops.cameramanager.render_scene_camera()
         return{'FINISHED'}
         
-class IMAGE_OT_reload_and_render_all(bpy.types.Operator):
+class IMAGE_OT_reload_and_render_all(Operator):
     bl_idname = "brt.reload_and_render_all"
     bl_label = "Reload all textures and render all cameras on the current frame"
     
@@ -455,7 +456,7 @@ class IMAGE_OT_reload_and_render_all(bpy.types.Operator):
             bpy.ops.cameramanager.render_all_camera()
         return{'FINISHED'}
 
-class IMAGE_OT_reload_and_render_anim(bpy.types.Operator):
+class IMAGE_OT_reload_and_render_anim(Operator):
     bl_idname = "brt.reload_and_render_anim"
     bl_label = "Reload all textures and render active camera for the entire animation"
     
@@ -465,7 +466,7 @@ class IMAGE_OT_reload_and_render_anim(bpy.types.Operator):
             bpy.ops.cameramanager.render_scene_animation()
         return{'FINISHED'}
 
-class IMAGE_OT_reload_and_render_all_anim(bpy.types.Operator):
+class IMAGE_OT_reload_and_render_all_anim(Operator):
     bl_idname = "brt.reload_and_render_all_anim"
     bl_label = "Reload all textures and render all cameras for the entire animation"
 

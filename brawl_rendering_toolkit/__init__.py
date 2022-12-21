@@ -17,17 +17,28 @@ bl_info = {
     "category": "3D View"}
 
 import bpy
-import traceback
 
 def register():
+
+    from . import modules
+    from . import operators
+    from . import props
+    from . import ui
 
     from .bpy_class import classes
 
     for cls in classes:
         bpy.utils.register_class(cls)
 
+    props.renderProps.register()
+
     
 def unregister():
+
+    from . import modules
+    from . import operators
+    from . import props
+    from . import ui
 
     from .bpy_class import classes
     for cls in reversed(classes):
