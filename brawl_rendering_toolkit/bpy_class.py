@@ -20,6 +20,7 @@ classes = [
     operators.brtOps.IMAGE_OT_reload_and_render_all,
     operators.brtOps.IMAGE_OT_reload_and_render_anim,
     operators.brtOps.IMAGE_OT_reload_and_render_all_anim,
+    props.renderProps.Toolkit_Settings,
     ui.panel.POSE_ARMATURE_PT_brt_panel,
     ui.panel.ARMATURES_PT_panel,
     ui.panel.IMPORT_PT_panel,
