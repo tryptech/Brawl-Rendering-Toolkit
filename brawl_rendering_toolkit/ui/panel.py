@@ -1,6 +1,9 @@
 import bpy
 
+from ..modules import brawlImport
 from ..operators import brtOps 
+
+blm_rig_id = "CSPUR"
 
 #-----------------------------------------
 
@@ -52,20 +55,20 @@ class IMPORT_PT_panel(bpy.types.Panel):
         scene = bpy.context.scene
         
         row = layout.row(align=True)
-        op = row.operator(OBJECT_OT_brawlcrate_collada_import.bl_idname,text='DAE')
-        op = row.operator(POSE_OT_brawlcrate_anim_import.bl_idname,text='ANIM')
+        op = row.operator(brawlImport.OBJECT_OT_brawlcrate_collada_import.bl_idname,text='DAE')
+        op = row.operator(brawlImport.POSE_OT_brawlcrate_anim_import.bl_idname,text='ANIM')
         
         layout.row().separator()
         layout.row().separator()
         row = layout.column(align=True)
-        op = row.operator(DATA_OT_brt_init_polish_setup.bl_idname,text='Setup for Manual Polish',icon='SPHERE')
-        op = row.operator(OBJECT_OT_brt_set_object_mods.bl_idname,text='Apply Default Modfiers',icon='MODIFIER')
+        op = row.operator(brtOps.DATA_OT_brt_init_polish_setup.bl_idname,text='Setup for Manual Polish',icon='SPHERE')
+        op = row.operator(brtOps.OBJECT_OT_brt_set_object_mods.bl_idname,text='Apply Default Modfiers',icon='MODIFIER')
         
         layout.row().separator()
         layout.row().separator()
         row = layout.column(align=True)
-        op = row.operator(POSE_ARMATURE_OT_config_ik.bl_idname,text='Configure IK',icon='POSE_HLT')
-        op = row.operator(POSE_ARMATURE_OT_bind_ik.bl_idname,text='Bind IK Rig',icon='CON_ARMATURE')
+        op = row.operator(brtOps.POSE_ARMATURE_OT_config_ik.bl_idname,text='Configure IK',icon='POSE_HLT')
+        op = row.operator(brtOps.POSE_ARMATURE_OT_bind_ik.bl_idname,text='Bind IK Rig',icon='CON_ARMATURE')
 
 class POSING_PT_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
@@ -81,8 +84,8 @@ class POSING_PT_panel(bpy.types.Panel):
         scene = bpy.context.scene
         
         column = layout.column(align=True)
-        op = column.operator(OBJECT_OT_brt_toggle_proxy.bl_idname,text='Toggle Proxy')
-        op = column.operator(POSE_ARMATURE_OT_clear_to_bind.bl_idname,text='Reset Proxy')
+        op = column.operator(brtOps.OBJECT_OT_brt_toggle_proxy.bl_idname,text='Toggle Proxy')
+        op = column.operator(brtOps.POSE_ARMATURE_OT_clear_to_bind.bl_idname,text='Reset Proxy')
         op.clear_location=True
         op.clear_rotation=True
         op.clear_scale=True
@@ -154,11 +157,11 @@ class RENDER_PT_panel(bpy.types.Panel):
                 row = layout.column(align=True)
 
                 if anim_render:
-                    row.operator(IMAGE_OT_reload_and_render_anim.bl_idname,text="Render Current Camera w/ Recolors", icon='OUTLINER_OB_IMAGE')
-                    row.operator(IMAGE_OT_reload_and_render_all_anim.bl_idname,text="Render All Cameras w/ Recolors", icon='RENDER_RESULT')
+                    row.operator(brtOps.IMAGE_OT_reload_and_render_anim.bl_idname,text="Render Current Camera w/ Recolors", icon='OUTLINER_OB_IMAGE')
+                    row.operator(brtOps.IMAGE_OT_reload_and_render_all_anim.bl_idname,text="Render All Cameras w/ Recolors", icon='RENDER_RESULT')
                 else:
-                    row.operator(IMAGE_OT_reload_and_render.bl_idname,text="Render Current Camera", icon='OUTLINER_OB_IMAGE')
-                    row.operator(IMAGE_OT_reload_and_render_all.bl_idname,text="Render All Cameras", icon='RENDER_RESULT')
+                    row.operator(brtOps.IMAGE_OT_reload_and_render.bl_idname,text="Render Current Camera", icon='OUTLINER_OB_IMAGE')
+                    row.operator(brtOps.IMAGE_OT_reload_and_render_all.bl_idname,text="Render All Cameras", icon='RENDER_RESULT')
 
 class UTILITY_PT_panel(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
@@ -174,8 +177,8 @@ class UTILITY_PT_panel(bpy.types.Panel):
         scene = bpy.context.scene
 
         row = layout.column(align=True)
-        op = row.operator(DATA_OT_brt_purge.bl_idname,text='Clean Unused Data',icon='TRASH') 
-        op = row.operator(IMAGE_OT_reload_textures.bl_idname,text='Reload Textures',icon='FILE_REFRESH')
+        op = row.operator(brtOps.DATA_OT_brt_purge.bl_idname,text='Clean Unused Data',icon='TRASH') 
+        op = row.operator(brtOps.IMAGE_OT_reload_textures.bl_idname,text='Reload Textures',icon='FILE_REFRESH')
 
 class BLOP_PT_rigui_CSPUR(bpy.types.Panel):
 	bl_space_type = 'VIEW_3D'
