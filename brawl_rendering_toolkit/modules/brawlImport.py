@@ -15,6 +15,8 @@ from bpy_extras.io_utils import ImportHelper
 from math import pi, tan
 from mathutils import  Matrix, Vector
 
+#-----------------------------------------
+
 class ContextOverride(dict):
     '''
     allows me to treat context overrides the same as non overrides:
@@ -886,6 +888,9 @@ def brawlcrate_anim_import(context, filepath,from_maya):
     print('.. finished importing maya animation: ' + filename)
 
     return action
+
+def matrix_from_sequence(sequence):
+    return Matrix((sequence[0:4],sequence[4:8],sequence[8:12],sequence[12:16]))
 
 #-----------------------------------------
 
