@@ -69,7 +69,8 @@ class IMPORT_PT_panel(Panel):
         layout.row().separator()
         row = layout.column(align=True)
         op = row.operator(brtOps.POSE_ARMATURE_OT_config_ik.bl_idname,text='Configure IK',icon='POSE_HLT')
-        op = row.operator(brtOps.POSE_ARMATURE_OT_bind_ik.bl_idname,text='Bind IK Rig',icon='CON_ARMATURE')
+        op = row.operator(brtOps.POSE_ARMATURE_OT_bind_ik.bl_idname,text='Bind IK Rig',icon='LINKED')
+        op = row.operator(brtOps.POSE_ARMATURE_OT_unbind_ik.bl_idname,text='Unbind IK Rig',icon='UNLINKED')
 
 class POSING_PT_panel(Panel):
     bl_space_type = 'VIEW_3D'

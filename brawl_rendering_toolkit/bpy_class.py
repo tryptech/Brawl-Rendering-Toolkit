@@ -15,6 +15,7 @@ classes = [
     operators.brtOps.POSE_ARMATURE_OT_clear_to_bind,
     operators.brtOps.POSE_ARMATURE_OT_config_ik,
     operators.brtOps.POSE_ARMATURE_OT_bind_ik,
+    operators.brtOps.POSE_ARMATURE_OT_unbind_ik,
     operators.brtOps.IMAGE_OT_reload_textures,
     operators.brtOps.IMAGE_OT_reload_and_render,
     operators.brtOps.IMAGE_OT_reload_and_render_all,

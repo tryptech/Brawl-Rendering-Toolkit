@@ -247,6 +247,45 @@ def bindToIK(context):
     proxy.hide_viewport=True
     return matched_bone
 
+def clearRig(context):
+    scene = context.scene
+    target = None
+    if context.mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+    print("Searching for target")
+    objects = [obj for obj in context.scene.objects if "BRT" in obj]
+    for obj in objects :
+        if obj["BRT"] == "TARGET":
+            print("Target found")
+            target = obj
+        else:
+            print(f"{obj.name} is not target")
+            obj.select_set(state=False)
+    if target is not None:    
+        print("Deselecting all objects")
+        bpy.ops.object.select_all(action='DESELECT')
+        print("Selecting target")
+        target.select_set(state=True)
+        context.view_layer.objects.active = target
+        print("Switching to target mode")
+        if context.mode != 'POSE':
+            bpy.ops.object.posemode_toggle()
+        print("Removing constraints")
+        for bone in target.pose.bones:
+            if hasattr(bone, "constraints"):
+                constraints = [constraint for constraint in bone.constraints]
+                for constraint in constraints:
+                    try:
+                        print(f"Removed constraint {constraint.name} from bone {bone.name}")
+                        bone.constraints.remove(constraint)
+                    except:
+                        print(f"Error removing constraint {constraint.name} from bone {bone.name}")
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+        return True
+    else:
+        return False
+
 def paths_update():
     if bpy.ops.pose.paths_update.poll():
         bpy.ops.pose.paths_update()
@@ -418,6 +457,28 @@ class POSE_ARMATURE_OT_bind_ik(Operator):
     def execute(self,context):
         print("Binding IK Rig to target")
         bindToIK(context)
+        
+        return {'FINISHED'}
+
+class POSE_ARMATURE_OT_unbind_ik(Operator):
+    bl_idname = "brt.unbind_ik"
+    bl_label = "Unbind IK Rig"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        target_rig = False
+        objects = [obj for obj in context.scene.objects if "BRT" in obj]
+        for obj in objects :
+            if obj["BRT"] == 'TARGET':
+                target_rig = True
+        return target_rig
+    
+    def execute(self,context):
+        print("Removing IK Rig from target")
+        result = clearRig(context)
+        if not result:
+            print("Did not successfully remove IK Rig from target")
         return {'FINISHED'}
 
 class IMAGE_OT_reload_textures(Operator):

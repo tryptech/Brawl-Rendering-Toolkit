@@ -10,7 +10,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 bl_info = {
     "name": "Brawl Rendering Toolkit",
     "author": "tryptech, Wayde Brandon Moss",
-    "version": (1, 3, 0),
+    "version": (1, 3, 2),
     "blender": (2, 81, 0),
     "location": "View3D > Sidebar > Tool",
     "description": "Super Smash Bros. Brawl Rendering Tools and Shortcuts",
@@ -45,7 +45,7 @@ def unregister():
         try:
             bpy.utils.unregister_class(cls)
         except RuntimeError as e:
-            print(f'Failed to unregister smash_ultimate_blender; Error="{e}" ; Traceback=\n{traceback.format_exc()}')
+            print(f'Failed to unregister brawl_rendering_toolkit; Error="{e}" ; Traceback=\n{traceback.format_exc()}')
 
 
 if __name__ == "__main__":
