@@ -508,6 +508,8 @@ class IMAGE_OT_reload_and_render(Operator):
     def execute(self, context):
         update_images()
         if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
+            if not hasattr(bpy.data.images,'Render Result'):
+                bpy.ops.image.new(name='Render Result', width=1920, height=1920)
             bpy.ops.cameramanager.render_scene_camera()
         return{'FINISHED'}
         
@@ -518,6 +520,8 @@ class IMAGE_OT_reload_and_render_all(Operator):
     def execute(self,context):
         update_images()
         if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
+            if not hasattr(bpy.data.images,'Render Result'):
+                bpy.ops.image.new(name='Render Result', width=1920, height=1920)
             bpy.ops.cameramanager.render_all_camera()
         return{'FINISHED'}
 
@@ -546,9 +550,6 @@ class IMAGE_OT_reload_and_render_all_anim(Operator):
     def __init__(self):
         print("Start")
         update_images()
-        if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
-            if not hasattr(bpy.data.images,'Render Result'):
-                bpy.ops.image.new(name='Render Result', width=1920, height=1920)
 
     def __del__(self):
         print("End")
@@ -577,6 +578,9 @@ class IMAGE_OT_reload_and_render_all_anim(Operator):
 
     def execute(self, context):
         print('EXECUTING')
+        if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
+            if not hasattr(bpy.data.images,'Render Result'):
+                bpy.ops.image.new(name='Render Result', width=1920, height=1920)
         bpy.ops.cameramanager.render_all_camera()
         return {'FINISHED'}
 
