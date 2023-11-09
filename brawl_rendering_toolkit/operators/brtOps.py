@@ -165,10 +165,14 @@ def bindToIK(context):
     for obj in objects :
         if obj["BRT"] == "CSPUR":
             cspur = obj
+            print(f"cspur: {cspur.name}")
         if obj["BRT"] == "TARGET":
             target = obj
+            print(f"target: {target.name}")
         if obj["BRT"] == "PROXY":
             proxy = obj
+            print(f"proxy: {proxy.name}")
+    
     tog_bone = cspur.pose.bones.get('CFG.Toggle')
     matched_bone = False
 
@@ -524,6 +528,8 @@ class IMAGE_OT_reload_and_render_anim(Operator):
     def execute(self, context):
         update_images()
         if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
+            if not hasattr(bpy.data.images,'Render Result'):
+                bpy.ops.image.new(name='Render Result', width=1920, height=1920)
             bpy.ops.cameramanager.render_scene_animation()
         return{'FINISHED'}
 
@@ -535,10 +541,14 @@ class IMAGE_OT_reload_and_render_all_anim(Operator):
     path = path_root = ""
     rsSIBF = False
     start_frame = end_frame = current_frame = 0
+    start_camera = ''
 
     def __init__(self):
         print("Start")
         update_images()
+        if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
+            if not hasattr(bpy.data.images,'Render Result'):
+                bpy.ops.image.new(name='Render Result', width=1920, height=1920)
 
     def __del__(self):
         print("End")
