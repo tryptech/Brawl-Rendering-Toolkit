@@ -12,6 +12,8 @@ classes = [
     operators.brtOps.DATA_OT_brt_purge,
     operators.brtOps.OBJECT_OT_brt_set_object_mods,
     operators.brtOps.OBJECT_OT_brt_toggle_proxy,
+    operators.brtOps.OBJECT_OT_brt_init_quantize,
+    operators.brtOps.OBJECT_OT_brt_quantize_and_normalize_weights,
     operators.brtOps.POSE_ARMATURE_OT_clear_to_bind,
     operators.brtOps.POSE_ARMATURE_OT_config_ik,
     operators.brtOps.POSE_ARMATURE_OT_bind_ik,

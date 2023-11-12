@@ -1,9 +1,8 @@
 import bpy
 
 from math import radians
-from bpy.types import Operator
+from bpy.types import IntProperty, Operator
 from bpy.props import BoolProperty
-from mathutils import Quaternion
 from ..modules import brawlImport
 
 if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
@@ -641,4 +640,51 @@ class IMAGE_OT_reload_and_render_all_anim(Operator):
         wm = context.window_manager
         wm.event_timer_remove(self._timer)
 
+class OBJECT_OT_brt_init_quantize(Operator):
+    bl_idname = "brt.init_quantize"
+    bl_label = "Initialize Quantize and Normalize Weights"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return any(not hasattr(ob,"QuantizeSteps") for ob in context.selected_objects)
+
+    def execute(self, context):
+        for ob in bpy.context.selected_objects:
+            if ob.type == 'MESH':
+                if not hasattr(ob.data, 'QuantizeSteps'):
+                    ob["QuantizeSteps"] = 100
+                    ob.id_properties_ensure()
+                    property_manager = ob.id_properties_ui("QuantizeSteps")
+                    property_manager.update(default=100, min=10, max=256, soft_min=10, soft_max=256)
+        return {'FINISHED'}
+
+class OBJECT_OT_brt_quantize_and_normalize_weights(Operator):
+    bl_idname = "brt.quantize_and_normalize_weights"
+    bl_label = "Quantize and Normalize Weights"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    active_object = ''
+
+    @classmethod
+    def poll(cls, context):
+        return any(ob.type == 'MESH' for ob in context.selected_objects)
+
+    def execute(self, context):
+        for ob in bpy.context.selected_objects:
+            if ob.type == 'MESH':
+                context.view_layer.objects.active = ob
+                bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
+                bpy.ops.object.mode_set(mode='EDIT', toggle=False)
+                bpy.ops.paint.weight_paint_toggle()
+                bpy.context.object.data.use_paint_mask_vertex = False
+                bpy.context.object.data.use_paint_mask = False
+                bpy.ops.object.vertex_group_quantize(group_select_mode='ALL', steps=ob["QuantizeSteps"])
+                bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=3)
+                bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL', lock_active=False)
+                bpy.ops.object.vertex_group_clean(group_select_mode='ALL', limit=0.0, keep_single=True)
+                bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL', lock_active=False)
+                bpy.ops.paint.weight_paint_toggle()
+                bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
+        return {'FINISHED'}
 #-----------------------------------------

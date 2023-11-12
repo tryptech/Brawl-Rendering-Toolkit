@@ -1,6 +1,6 @@
 import bpy
 
-from bpy.types import Panel, PoseBone
+from bpy.types import Object, Panel, PoseBone
 from ..modules import brawlImport
 from ..operators import brtOps 
 
@@ -141,7 +141,7 @@ class RENDER_PT_panel(Panel):
                 layout.row().separator()
                 row = layout.row(align=True)
 
-                row.prop(scene, "frame_float" if scene.show_subframe else "frame_current", text="Current")
+                row.prop(scene, "frame_float" if scene.show_subframe else "frame_current", text="Frame/Color")
                 row.prop(rs, "switchStillAnim_prop", text="",icon='RENDER_ANIMATION')
 
                 if anim_render:
@@ -181,6 +181,16 @@ class UTILITY_PT_panel(Panel):
         row = layout.column(align=True)
         op = row.operator(brtOps.DATA_OT_brt_purge.bl_idname,text='Clean Unused Data',icon='TRASH') 
         op = row.operator(brtOps.IMAGE_OT_reload_textures.bl_idname,text='Reload Textures',icon='FILE_REFRESH')
+
+        layout.row().separator()
+        layout.row().separator()
+        row = layout.column(align=True)
+		
+        if "QuantizeSteps" in context.active_object:
+            op = row.prop(context.active_object, '["QuantizeSteps"]', text="Quantize Steps")
+            op = row.operator(brtOps.OBJECT_OT_brt_quantize_and_normalize_weights.bl_idname,text='Quantize Weights',icon='SNAP_ON')
+        else:
+            op = row.operator(brtOps.OBJECT_OT_brt_init_quantize.bl_idname,text='Set up quantization',icon='SNAP_ON')
 
 class BLOP_PT_rigui_CSPUR(Panel):
 	bl_space_type = 'VIEW_3D'
@@ -236,31 +246,32 @@ class BLOP_PT_customprops_CSPUR(Panel):
 
 	@classmethod
 	def poll(self, context):
-		if context.active_object.data.get('blm_rig_id'):
-			pose_bones = context.selected_pose_bones
-			props = None
-			rna_properties = {prop.identifier for prop in PoseBone.bl_rna.properties if prop.is_runtime}
-			if context.selected_pose_bones:
-				bones = context.selected_pose_bones
-
-			elif context.selected_editable_bones:
-				bones = [pose_bones[bone.name] for bone in context.selected_editable_bones]
-
-			elif context.mode == 'OBJECT':
-				bones = context.active_object.pose.bones
-
+		if context.active_object:
+			if hasattr(context.active_object.data, 'blm_rig_id'):
+				pose_bones = context.selected_pose_bones
+				props = None
+				rna_properties = {prop.identifier for prop in PoseBone.bl_rna.properties if prop.is_runtime}
+				if context.selected_pose_bones:
+					bones = context.selected_pose_bones
+	
+				elif context.selected_editable_bones:
+					bones = [pose_bones[bone.name] for bone in context.selected_editable_bones]
+	
+				elif context.mode == 'OBJECT':
+					bones = context.active_object.pose.bones
+	
+				else:
+					return False
+				if bones:
+					props = [[prop for prop in bone.items() if prop not in rna_properties] for bone in bones]
+	
+				if props and bones:
+					return (context.active_object.data.get("blm_rig_id") == blm_rig_id)
+				else:
+					return False
+	
 			else:
 				return False
-			if bones:
-				props = [[prop for prop in bone.items() if prop not in rna_properties] for bone in bones]
-
-			if props and bones:
-				return (context.active_object.data.get("blm_rig_id") == blm_rig_id)
-			else:
-				return False
-
-		else:
-			return False
 
 	def draw(self, context):
 		layout = self.layout
