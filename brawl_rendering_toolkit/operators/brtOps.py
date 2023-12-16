@@ -647,7 +647,7 @@ class OBJECT_OT_brt_init_quantize(Operator):
 
     @classmethod
     def poll(cls, context):
-        return any(not hasattr(ob,"QuantizeSteps") for ob in context.selected_objects)
+        return any(not hasattr(ob,"QuantizeSteps") for ob in context.selected_objects) and any(not hasattr(ob,"QuantizeMaxBones") for ob in context.selected_objects)
 
     def execute(self, context):
         for ob in bpy.context.selected_objects:
@@ -657,6 +657,11 @@ class OBJECT_OT_brt_init_quantize(Operator):
                     ob.id_properties_ensure()
                     property_manager = ob.id_properties_ui("QuantizeSteps")
                     property_manager.update(default=100, min=10, max=256, soft_min=10, soft_max=256)
+                if not hasattr(ob.data, 'QuantizeMaxBones'):
+                    ob["QuantizeMaxBones"] = 3
+                    ob.id_properties_ensure()
+                    property_manager = ob.id_properties_ui("QuantizeMaxBones")
+                    property_manager.update(default=3, min=1, max=10, soft_min=11, soft_max=10)
         return {'FINISHED'}
 
 class OBJECT_OT_brt_quantize_and_normalize_weights(Operator):
@@ -680,7 +685,7 @@ class OBJECT_OT_brt_quantize_and_normalize_weights(Operator):
                 bpy.context.object.data.use_paint_mask_vertex = False
                 bpy.context.object.data.use_paint_mask = False
                 bpy.ops.object.vertex_group_quantize(group_select_mode='ALL', steps=ob["QuantizeSteps"])
-                bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=3)
+                bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=ob["QuantizeMaxBones"])
                 bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL', lock_active=False)
                 bpy.ops.object.vertex_group_clean(group_select_mode='ALL', limit=0.0, keep_single=True)
                 bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL', lock_active=False)

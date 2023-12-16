@@ -186,7 +186,8 @@ class UTILITY_PT_panel(Panel):
         layout.row().separator()
         row = layout.column(align=True)
 		
-        if "QuantizeSteps" in context.active_object:
+        if "QuantizeSteps" in context.active_object and "QuantizeMaxBones" in context.active_object:
+            op = row.prop(context.active_object, '["QuantizeMaxBones"]', text="Max Bones")
             op = row.prop(context.active_object, '["QuantizeSteps"]', text="Quantize Steps")
             op = row.operator(brtOps.OBJECT_OT_brt_quantize_and_normalize_weights.bl_idname,text='Quantize Weights',icon='SNAP_ON')
         else:
