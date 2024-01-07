@@ -116,20 +116,11 @@ class RENDER_PT_panel(Panel):
             row.label(text=' Save Blend File First  --->', icon='INFO')
             row.operator('wm.save_mainfile', text='', icon='FILE_TICK')
             row.alert = False
-
-        if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
-            if bpy.data.is_saved == False:
-                layout.use_property_split = False
-                row = layout.row(align=True)
-                row.alignment='CENTER'
-                row.alert = True
-                row.label(text=' Save Blend File First  --->', icon='INFO')
-                row.operator('wm.save_mainfile', text='', icon='FILE_TICK')
-                row.alert = False
-            else:
+        else:
+            if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
                 row = layout.row(align=True)
 
-                row.prop(rs,'saveInBlendFolder',text='Save in blend folder' if saveInLocalFolder else 'Save in custom path',icon='BLENDER')
+                row.prop(rs,'saveInBlendFolder',text='Save in blend folder' if saveInLocalFolder else 'Save in custom path',icon='FILEFOLDER' if saveInLocalFolder else 'BLENDER')
 
                 row = layout.row(align=True)
 
@@ -146,9 +137,6 @@ class RENDER_PT_panel(Panel):
 
                 if anim_render:
                     row = layout.row(align=True)
-
-                    row.prop(scene, "use_preview_range", text="", toggle=True)
-
                     sub = row.row(align=True)
 
                     sub.prop(scene, "frame_preview_start" if scene.use_preview_range else "frame_start", text="Start")
@@ -159,10 +147,10 @@ class RENDER_PT_panel(Panel):
                 row = layout.column(align=True)
 
                 if anim_render:
-                    row.operator(brtOps.IMAGE_OT_reload_and_render_anim.bl_idname,text="Render Current Camera w/ Recolors", icon='OUTLINER_OB_IMAGE')
+                    row.operator(brtOps.IMAGE_OT_reload_and_render_anim.bl_idname,text="Render Current Camera w/ Recolors", icon='FILE_IMAGE')
                     row.operator(brtOps.IMAGE_OT_reload_and_render_all_anim.bl_idname,text="Render All Cameras w/ Recolors", icon='RENDER_RESULT')
                 else:
-                    row.operator(brtOps.IMAGE_OT_reload_and_render.bl_idname,text="Render Current Camera", icon='OUTLINER_OB_IMAGE')
+                    row.operator(brtOps.IMAGE_OT_reload_and_render.bl_idname,text="Render Current Camera", icon='FILE_IMAGE')
                     row.operator(brtOps.IMAGE_OT_reload_and_render_all.bl_idname,text="Render All Cameras", icon='RENDER_RESULT')
 
 class UTILITY_PT_panel(Panel):
