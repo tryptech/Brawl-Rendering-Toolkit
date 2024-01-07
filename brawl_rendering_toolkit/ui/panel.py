@@ -120,7 +120,7 @@ class RENDER_PT_panel(Panel):
             if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
                 row = layout.row(align=True)
 
-                row.prop(rs,'saveInBlendFolder',text='Save in blend folder' if saveInLocalFolder else 'Save in custom path',icon='FILE_FOLDER' if saveInLocalFolder else 'BLENDER')
+                row.prop(rs,'saveInBlendFolder',text='Save in blend folder' if saveInLocalFolder else 'Save in custom path',icon='BLENDER' if saveInLocalFolder else 'FILE_FOLDER')
 
                 row = layout.row(align=True)
 
@@ -133,7 +133,7 @@ class RENDER_PT_panel(Panel):
                 row = layout.row(align=True)
 
                 row.prop(scene, "frame_float" if scene.show_subframe else "frame_current", text="Frame/Color")
-                row.prop(rs, "switchStillAnim_prop", text="",icon='RENDER_ANIMATION')
+                row.prop(rs, "switchStillAnim_prop", text="",icon='MODIFIER_ON' if scene.show_subframe else 'MODIFIER_OFF')
 
                 if anim_render:
                     row = layout.row(align=True)
