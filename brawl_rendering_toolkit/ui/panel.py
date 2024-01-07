@@ -133,7 +133,7 @@ class RENDER_PT_panel(Panel):
                 row = layout.row(align=True)
 
                 row.prop(scene, "frame_float" if scene.show_subframe else "frame_current", text="Frame/Color")
-                row.prop(rs, "switchStillAnim_prop", text="",icon='MODIFIER_ON' if scene.show_subframe else 'MODIFIER_OFF')
+                row.prop(rs, "switchStillAnim_prop", text="",icon='MODIFIER_ON' if rs.switchStillAnim_prop else 'MODIFIER_OFF')
 
                 if anim_render:
                     row = layout.row(align=True)
