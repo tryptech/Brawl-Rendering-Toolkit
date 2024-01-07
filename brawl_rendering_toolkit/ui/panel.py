@@ -120,7 +120,7 @@ class RENDER_PT_panel(Panel):
             if hasattr(bpy.types, "MYBIGBUTTONTAB_PT_MyBigButton"):
                 row = layout.row(align=True)
 
-                row.prop(rs,'saveInBlendFolder',text='Save in blend folder' if saveInLocalFolder else 'Save in custom path',icon='FILEFOLDER' if saveInLocalFolder else 'BLENDER')
+                row.prop(rs,'saveInBlendFolder',text='Save in blend folder' if saveInLocalFolder else 'Save in custom path',icon='FILE_FOLDER' if saveInLocalFolder else 'BLENDER')
 
                 row = layout.row(align=True)
 
