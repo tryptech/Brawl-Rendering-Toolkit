@@ -623,6 +623,8 @@ class IMAGE_OT_reload_and_render_all_anim(Operator):
 
         self.start_frame = s.frame_preview_start if s.use_preview_range else s.frame_start
         self.end_frame = s.frame_preview_end if s.use_preview_range else s.frame_end
+        self.current_frame = self.start_frame
+        print(self.current_frame)
         isDS = True if self.path == '//' else False
         localPath = bpy.path.abspath(self.path)
 
